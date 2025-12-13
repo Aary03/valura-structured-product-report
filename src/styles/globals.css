@@ -1,0 +1,147 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    background: var(--bg-grad);
+    @apply text-text-primary font-sans;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold;
+    color: var(--valura-ink);
+  }
+}
+
+@layer components {
+  .section-card {
+    @apply bg-white rounded-2xl p-6 border;
+    box-shadow: var(--shadow-soft);
+    border-color: var(--border);
+  }
+  
+  .header-badge {
+    @apply text-white px-4 py-2 rounded-md font-bold text-xl;
+    background: var(--valura-ink);
+  }
+  
+  .btn-primary {
+    @apply text-white px-6 py-3 rounded-md font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+    background: var(--valura-ink);
+  }
+  
+  .btn-primary:hover {
+    background: var(--valura-mint-600);
+  }
+  
+  .btn-secondary {
+    @apply bg-grey-light text-white px-6 py-3 rounded-md font-semibold hover:bg-grey-medium transition-colors;
+  }
+  
+  .input-field {
+    @apply w-full px-4 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:border-transparent;
+    background: var(--surface);
+    color: var(--valura-ink);
+  }
+  
+  .input-field:focus {
+    --tw-ring-color: var(--valura-ink);
+  }
+  
+  .input-field::placeholder {
+    color: var(--muted);
+  }
+  
+  .input-field:disabled {
+    background: var(--surface-2);
+    color: var(--muted);
+    cursor: not-allowed;
+  }
+  
+  .label {
+    @apply block text-sm font-semibold mb-2;
+    color: var(--valura-ink);
+  }
+  
+  .performance-positive {
+    @apply text-green-positive;
+  }
+  
+  .performance-negative {
+    @apply text-red-negative;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .section-card,
+  [class*="CardShell"] {
+    box-shadow: none !important;
+    border: 1px solid var(--border) !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    background: white !important;
+  }
+  
+  body {
+    background: white !important;
+  }
+  
+  /* Disable animations in print */
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+  
+  /* Remove hover transforms in print */
+  [class*="hover:-translate-y"] {
+    transform: none !important;
+  }
+  
+  /* Ensure charts are printable with colors */
+  svg {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+    color-adjust: exact;
+  }
+  
+  /* Preserve colors in PDF */
+  * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+    color-adjust: exact;
+  }
+  
+  /* Remove glass effects */
+  [class*="glass"],
+  [class*="backdrop-blur"] {
+    background: white !important;
+    backdrop-filter: none !important;
+  }
+  
+  /* Page breaks */
+  .section-card {
+    page-break-after: auto;
+  }
+  
+  /* Ensure proper spacing */
+  .grid {
+    page-break-inside: avoid;
+  }
+}
+
