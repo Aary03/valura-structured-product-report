@@ -9,6 +9,7 @@ import { ReverseConvertibleReport } from './components/report/ReverseConvertible
 import { useReportGenerator } from './hooks/useReportGenerator';
 import type { ReverseConvertibleTerms } from './products/reverseConvertible/terms';
 import { APITestComponent } from './test-api-component';
+import { PdfReport } from './components/pdf/PdfReport';
 import './styles/globals.css';
 import './styles/theme.css';
 
@@ -16,10 +17,18 @@ import './styles/theme.css';
 const TEST_API_MODE = false;
 
 function App() {
+  const isPdf = new URLSearchParams(window.location.search).get('pdf') === '1';
+
   // TEMPORARY: Show API test component
   if (TEST_API_MODE) {
     return <APITestComponent />;
   }
+
+  // PDF-only layout: renders only the 2-page PDF design (no nav, no buttons)
+  if (isPdf) {
+    return <PdfReport />;
+  }
+
   const { reportData, loading, error, generateReport, clearReport } = useReportGenerator();
   const [showReport, setShowReport] = useState(false);
 

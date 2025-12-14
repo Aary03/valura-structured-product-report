@@ -16,6 +16,13 @@ export interface UnderlyingSummary {
   initialFixing: number;
   performancePct: number; // % vs initial fixing
   distanceToBarrierPctPts: number; // Percentage points above/below barrier
+  sector?: string;
+  industry?: string;
+  exchange?: string;
+  pe?: number;
+  eps?: number;
+  dividendYieldPct?: number; // Dividend yield (%)
+  nextEarningsDate?: string; // ISO string
   marketCap?: number;
   avgVolume?: number;
   vol30dAnn?: number; // 30-day annualized volatility
@@ -32,6 +39,27 @@ export interface UnderlyingSummary {
   momentumBadge?: 'Uptrend' | 'Sideways' | 'Downtrend';
   riskBadge?: 'Low' | 'Medium' | 'High';
   insight: string; // Auto-generated one-liner
+}
+
+type FMPRatiosTTM = {
+  dividendYieldTTM?: number;
+  dividendYield?: number;
+  peRatioTTM?: number;
+  priceEarningsRatioTTM?: number;
+};
+
+function toPctMaybe(x?: number): number | undefined {
+  if (x == null || !Number.isFinite(x)) return undefined;
+  // Heuristic: if already looks like percent (e.g. 3.2), keep; if decimal (0.032), convert.
+  if (x > 1.5) return x;
+  return x * 100;
+}
+
+function parseMaybeDate(x?: string): string | undefined {
+  if (!x) return undefined;
+  const d = new Date(x);
+  if (Number.isNaN(d.getTime())) return undefined;
+  return d.toISOString();
 }
 
 /**
@@ -164,12 +192,13 @@ export async function buildUnderlyingSummary(
   historicalData?: HistoricalPricePoint[]
 ): Promise<UnderlyingSummary> {
   try {
-    // Fetch quote, profile, price target, ratings in parallel
-    const [quoteResponse, profileResponse, priceTargetResponse, ratingsResponse] = await Promise.allSettled([
+    // Fetch quote, profile, price target, ratings (+ ratios TTM) in parallel
+    const [quoteResponse, profileResponse, priceTargetResponse, ratingsResponse, ratiosTtmResponse] = await Promise.allSettled([
       fmpClient.get<any>(fmpClient.quote.quote(symbol)),
       fmpClient.get<any>(fmpClient.profile.profile(symbol)),
       fmpClient.get<any>(fmpClient.analyst.priceTargetConsensus(symbol)),
       fmpClient.get<any>(fmpClient.analyst.ratingsSnapshot(symbol)),
+      fmpClient.get<any>(fmpClient.financialStatements.ratiosTtm(symbol)),
     ]);
 
     // Extract quote
@@ -202,6 +231,13 @@ export async function buildUnderlyingSummary(
     if (ratingsResponse.status === 'fulfilled') {
       const value = ratingsResponse.value;
       ratings = Array.isArray(value) && value.length > 0 ? value[0] : value;
+    }
+
+    // Extract ratios TTM
+    let ratiosTtm: FMPRatiosTTM | undefined;
+    if (ratiosTtmResponse.status === 'fulfilled') {
+      const value = ratiosTtmResponse.value;
+      ratiosTtm = Array.isArray(value) && value.length > 0 ? value[0] : value;
     }
 
     const spotPrice = quote.price;
@@ -242,6 +278,21 @@ export async function buildUnderlyingSummary(
       ? ((targetPrice / spotPrice) - 1) * 100 
       : undefined;
 
+    // Fundamental/descriptor info (best-effort)
+    const sector: string | undefined = profile?.sector;
+    const industry: string | undefined = profile?.industry;
+    const exchange: string | undefined = quote.exchange || profile?.exchange;
+    const beta: number | undefined = profile?.beta;
+    const pe: number | undefined =
+      (Number.isFinite(quote.pe) ? quote.pe : undefined) ??
+      ratiosTtm?.peRatioTTM ??
+      ratiosTtm?.priceEarningsRatioTTM;
+    const eps: number | undefined = Number.isFinite(quote.eps) ? quote.eps : undefined;
+    const dividendYieldPct =
+      toPctMaybe(ratiosTtm?.dividendYieldTTM ?? ratiosTtm?.dividendYield) ??
+      toPctMaybe(profile?.lastDiv && spotPrice ? (profile.lastDiv / spotPrice) : undefined);
+    const nextEarningsDate = parseMaybeDate(quote.earningsAnnouncement);
+
     // Generate insight
     const insight = generateInsight(distanceToBarrierPctPts, vol30dAnn, analystConsensus, targetUpside);
 
@@ -258,6 +309,13 @@ export async function buildUnderlyingSummary(
       initialFixing,
       performancePct,
       distanceToBarrierPctPts,
+      sector,
+      industry,
+      exchange,
+      pe,
+      eps,
+      dividendYieldPct,
+      nextEarningsDate,
       marketCap: quote.marketCap || profile?.mktCap,
       avgVolume: quote.avgVolume || quote.volume,
       vol30dAnn,
@@ -265,7 +323,7 @@ export async function buildUnderlyingSummary(
       analystConsensus,
       targetPrice,
       targetUpside,
-      beta: profile?.beta,
+      beta,
       momentum20d,
       momentumBadge,
       riskBadge,

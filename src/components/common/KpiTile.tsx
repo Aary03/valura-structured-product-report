@@ -15,7 +15,7 @@ interface KpiTileProps {
 
 export function KpiTile({ icon, value, subtitle, gradient = 'primary', className = '' }: KpiTileProps) {
   const iconBgClasses = {
-    primary: 'bg-valura-mint-100 text-valura-ink',
+    primary: 'bg-primary-blue-bg text-primary-blue',
     success: 'bg-success-bg text-success-fg',
     warning: 'bg-warning-bg text-warning-fg',
     danger: 'bg-danger-bg text-danger-fg',
@@ -24,13 +24,15 @@ export function KpiTile({ icon, value, subtitle, gradient = 'primary', className
   return (
     <div
       className={`
-        bg-surface rounded-xl p-4 border border-border
-        shadow-card hover:shadow-card hover:-translate-y-0.5
-        transition-all duration-200
+        bg-surface p-5 border
+        shadow-card hover:shadow-strong hover:-translate-y-1
+        transition-all duration-300
         ${className}
       `}
       style={{
         borderRadius: 'var(--radius-xl)',
+        borderColor: 'var(--border-light)',
+        borderWidth: '1px',
       }}
     >
       <div className="flex items-start justify-between mb-3">
@@ -38,8 +40,8 @@ export function KpiTile({ icon, value, subtitle, gradient = 'primary', className
           {icon}
         </div>
       </div>
-      <div className="text-3xl font-bold text-valura-ink mb-1">{value}</div>
-      <div className="text-sm text-muted">{subtitle}</div>
+      <div className="text-3xl font-bold text-text-primary mb-1">{value}</div>
+      <div className="text-sm text-text-secondary">{subtitle}</div>
     </div>
   );
 }

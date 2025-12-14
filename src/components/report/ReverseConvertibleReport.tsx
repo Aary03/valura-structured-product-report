@@ -22,7 +22,7 @@ import { Footer } from './Footer';
 import { normalizeLevel } from '../../products/common/basket';
 import { addMonths, getCurrentISODate } from '../../core/types/dates';
 import { Download } from 'lucide-react';
-import { downloadReportPDF } from '../../utils/pdfExport';
+import { downloadReportPDFServer } from '../../utils/pdfExport';
 import { useState } from 'react';
 
 interface ReverseConvertibleReportProps {
@@ -59,10 +59,10 @@ export function ReverseConvertibleReport({ reportData }: ReverseConvertibleRepor
     setIsGeneratingPDF(true);
     try {
       const filename = `reverse-convertible-${terms.underlyings.map(u => u.ticker).join('-')}-${new Date().toISOString().split('T')[0]}.pdf`;
-      await downloadReportPDF('report-container', filename);
+      await downloadReportPDFServer(reportData, filename);
     } catch (error) {
       console.error('Failed to generate PDF:', error);
-      alert('Failed to generate PDF. Please try again.');
+      alert('Failed to generate PDF. Make sure the PDF server is running, then try again.');
     } finally {
       setIsGeneratingPDF(false);
     }
@@ -70,122 +70,119 @@ export function ReverseConvertibleReport({ reportData }: ReverseConvertibleRepor
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-grad)' }}>
-      <div id="report-container" className="max-w-7xl mx-auto px-6 py-8 space-y-4">
+      <div id="report-container" className="report-root max-w-7xl mx-auto px-6 py-8">
         {/* PDF Download Button */}
-        <div className="flex justify-end mb-4 no-print">
+        <div className="flex justify-end mb-6 no-print">
           <button
             onClick={handleDownloadPDF}
             disabled={isGeneratingPDF}
-            className="flex items-center space-x-2 px-6 py-3 bg-valura-ink text-white rounded-md font-semibold transition-colors hover:bg-valura-mint-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-card"
+            className="btn-primary flex items-center space-x-2 px-8 py-3.5 text-base"
+            style={{
+              boxShadow: 'var(--shadow-button)',
+            }}
           >
             <Download className="w-5 h-5" />
-            <span>{isGeneratingPDF ? 'Generating PDF...' : 'Download PDF'}</span>
+            <span className="font-semibold">{isGeneratingPDF ? 'Generating PDF...' : 'Download PDF'}</span>
           </button>
         </div>
-      {/* Hero Header with KPIs */}
-      <HeroHeader
-        terms={terms}
-        currentWorstOfLevel={currentLevel}
-        barrierLevel={barrierLevel}
-        worstUnderlyingIndex={reportData.worstUnderlyingIndex}
-      />
-
-      {/* One-Minute Summary */}
-      <OneMinuteSummary
-        terms={terms}
-        timestamp={reportData.generatedDate}
-      />
-
-      {/* Key Dates */}
-      <KeyDates
-        pricingDate={pricingDate}
-        couponSchedule={reportData.couponSchedule}
-        maturityDate={maturityDate}
-      />
-
-      {/* Main Grid Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Left Column */}
-        <div className="space-y-4 flex flex-col">
-          <ProductSummary terms={terms} />
-          <SuitabilitySection />
+        <div className="no-print text-xs text-text-secondary text-right -mt-4 mb-2">
+          PDF export uses the dedicated 2-page layout. Start the PDF server with <span className="font-mono">npm run pdf:server</span>.
         </div>
-
-        {/* Right Column */}
-        <div className="flex flex-col">
-          <UnderlyingsTable
-            underlyingData={underlyingData}
-            historicalData={historicalData}
-            initialFixings={initialFixings}
+        <div className="report-stack flex flex-col gap-4">
+          {/* Hero Header with KPIs */}
+          <HeroHeader
             terms={terms}
-            referencePrices={reportData.referencePrices}
+            currentWorstOfLevel={currentLevel}
+            barrierLevel={barrierLevel}
             worstUnderlyingIndex={reportData.worstUnderlyingIndex}
           />
+
+          {/* One-Minute Summary */}
+          <OneMinuteSummary terms={terms} timestamp={reportData.generatedDate} />
+
+          {/* Key Dates */}
+          <KeyDates
+            pricingDate={pricingDate}
+            couponSchedule={reportData.couponSchedule}
+            maturityDate={maturityDate}
+          />
+
+          {/* Top Row: Product + Underlyings Table (prevents awkward empty right column) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pdf-single-col">
+            <ProductSummary terms={terms} />
+            <UnderlyingsTable
+              underlyingData={underlyingData}
+              historicalData={historicalData}
+              initialFixings={initialFixings}
+              terms={terms}
+              referencePrices={reportData.referencePrices}
+              worstUnderlyingIndex={reportData.worstUnderlyingIndex}
+            />
+          </div>
+
+          {/* Suitability - Full Width */}
+          <SuitabilitySection />
+
+          {/* Underlyings Spotlight - Full Width */}
+          <UnderlyingsSpotlight
+            underlyingData={underlyingData}
+            historicalData={historicalData}
+            terms={terms}
+            worstUnderlyingIndex={reportData.worstUnderlyingIndex}
+          />
+
+          {/* Charts Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <PayoffGraph
+              curvePoints={curvePoints}
+              barrierLevel={barrierLevel}
+              strikeLevel={strikeLevel}
+              intrinsicValue={intrinsicValue}
+              currentLevel={currentLevel}
+              variant={terms.variant}
+              breakEvenPct={reportData.breakEvenPct}
+            />
+            <PerformanceGraph
+              historicalData={historicalData}
+              underlyingSymbols={underlyingSymbols}
+              barrierLevel={barrierLevel}
+              strikeLevel={strikeLevel}
+              initialFixings={initialFixings}
+              basketType={terms.basketType}
+              worstUnderlyingIndex={reportData.worstUnderlyingIndex}
+            />
+          </div>
+
+          {/* Outcome Examples and Break-Even */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <OutcomeExamples
+              terms={terms}
+              notional={terms.notional}
+              barrierPct={barrierLevel}
+              breakEvenPct={reportData.breakEvenPct}
+            />
+            <BreakEvenCard terms={terms} notional={terms.notional} />
+          </div>
+
+          {/* Scenarios Flowchart - Full Width */}
+          <ScenarioFlowchart
+            flow={buildRCFlow(terms, {
+              basketType: terms.basketType,
+              worstOfLabel: terms.basketType === 'worst_of' ? 'Worst-Of' : undefined,
+              barrierPct: barrierLevel,
+              strikePct: strikeLevel,
+              gearing: reportData.payoffResult?.gearing,
+              conversionRatio: terms.conversionRatio,
+              settlement: 'cash/physical',
+            })}
+          />
+
+          {/* Risks */}
+          <Risks />
+
+          {/* Footer (screen only; PDF gets stamped header/footer) */}
+          <Footer date={generatedDate} documentId={documentId} />
         </div>
-      </div>
-
-      {/* Underlyings Spotlight - Full Width */}
-      <UnderlyingsSpotlight
-        underlyingData={underlyingData}
-        historicalData={historicalData}
-        terms={terms}
-        worstUnderlyingIndex={reportData.worstUnderlyingIndex}
-      />
-
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <PayoffGraph
-          curvePoints={curvePoints}
-          barrierLevel={barrierLevel}
-          strikeLevel={strikeLevel}
-          intrinsicValue={intrinsicValue}
-          currentLevel={currentLevel}
-          variant={terms.variant}
-          breakEvenPct={reportData.breakEvenPct}
-        />
-        <PerformanceGraph
-          historicalData={historicalData}
-          underlyingSymbols={underlyingSymbols}
-          barrierLevel={barrierLevel}
-          strikeLevel={strikeLevel}
-          initialFixings={initialFixings}
-          basketType={terms.basketType}
-          worstUnderlyingIndex={reportData.worstUnderlyingIndex}
-        />
-      </div>
-
-      {/* Outcome Examples and Break-Even */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <OutcomeExamples
-          terms={terms}
-          notional={terms.notional}
-          barrierPct={barrierLevel}
-          breakEvenPct={reportData.breakEvenPct}
-        />
-        <BreakEvenCard
-          terms={terms}
-          notional={terms.notional}
-        />
-      </div>
-
-      {/* Scenarios Flowchart - Full Width */}
-      <ScenarioFlowchart
-        flow={buildRCFlow(terms, {
-          basketType: terms.basketType,
-          worstOfLabel: terms.basketType === 'worst_of' ? 'Worst-Of' : undefined,
-          barrierPct: barrierLevel,
-          strikePct: strikeLevel,
-          gearing: reportData.payoffResult?.gearing,
-          conversionRatio: terms.conversionRatio,
-          settlement: 'cash/physical',
-        })}
-      />
-
-      {/* Risks */}
-      <Risks />
-
-      {/* Footer */}
-      <Footer date={generatedDate} documentId={documentId} />
       </div>
     </div>
   );

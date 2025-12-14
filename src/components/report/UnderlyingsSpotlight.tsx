@@ -11,12 +11,14 @@ import { buildUnderlyingSummary, type UnderlyingSummary } from '../../services/u
 import { UnderlyingCard } from './UnderlyingCard';
 import { SectionHeader } from '../common/SectionHeader';
 import { RefreshCw } from 'lucide-react';
+import { CardShell } from '../common/CardShell';
 
 interface UnderlyingsSpotlightProps {
   underlyingData: UnderlyingData[];
   historicalData: HistoricalPricePoint[][];
   terms: ReverseConvertibleTerms;
   worstUnderlyingIndex: number | null;
+  pdfMode?: boolean;
 }
 
 export function UnderlyingsSpotlight({
@@ -24,6 +26,7 @@ export function UnderlyingsSpotlight({
   historicalData,
   terms,
   worstUnderlyingIndex,
+  pdfMode = false,
 }: UnderlyingsSpotlightProps) {
   const [summaries, setSummaries] = useState<UnderlyingSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,24 +87,24 @@ export function UnderlyingsSpotlight({
 
   if (loading) {
     return (
-      <div className="section-card p-6">
+      <CardShell className="p-6">
         <SectionHeader title="Underlying Spotlights" />
         <div className="flex items-center justify-center py-12">
           <RefreshCw className="w-8 h-8 animate-spin text-primary" />
           <span className="ml-3 text-text-secondary">Loading underlying data...</span>
         </div>
-      </div>
+      </CardShell>
     );
   }
 
   if (error) {
     return (
-      <div className="section-card p-6">
+      <CardShell className="p-6">
         <SectionHeader title="Underlying Spotlights" />
         <div className="text-center py-8 text-danger">
           <p>Error loading underlying data: {error}</p>
         </div>
-      </div>
+      </CardShell>
     );
   }
 
@@ -113,16 +116,32 @@ export function UnderlyingsSpotlight({
     <div className="mb-6">
       <SectionHeader
         title="Underlying Spotlights"
-        subtitle="Comprehensive metrics and risk analysis for each underlying"
+        subtitle={pdfMode ? undefined : "Comprehensive metrics and risk analysis for each underlying"}
       />
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
-        {summaries.map((summary, index) => (
-          <UnderlyingCard
-            key={summary.symbol}
-            summary={summary}
-            isWorstOf={worstUnderlyingIndex !== null && index === worstUnderlyingIndex}
-          />
-        ))}
+      <div
+        className={`mt-4 ${
+          summaries.length === 1
+            ? 'max-w-3xl mx-auto'
+            : 'w-full'
+        }`}
+      >
+        <div
+          className={`grid gap-4 ${
+            summaries.length === 1
+              ? 'grid-cols-1'
+              : pdfMode
+              ? 'grid-cols-1'
+              : 'grid-cols-1'
+          }`}
+        >
+          {summaries.map((summary, index) => (
+            <UnderlyingCard
+              key={summary.symbol}
+              summary={summary}
+              isWorstOf={worstUnderlyingIndex !== null && index === worstUnderlyingIndex}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );

@@ -11,14 +11,12 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ReferenceLine,
   ReferenceArea,
   ResponsiveContainer,
   Label,
 } from 'recharts';
 import type { CurvePoint } from '../../products/common/payoffTypes';
-import { formatPercent } from '../../core/utils/math';
 import { CardShell } from '../common/CardShell';
 import { SectionHeader } from '../common/SectionHeader';
 import { TrendingDown } from 'lucide-react';
@@ -31,6 +29,7 @@ interface PayoffGraphProps {
   currentLevel: number;
   variant?: 'standard_barrier_rc' | 'low_strike_geared_put';
   breakEvenPct?: number; // Break-even worst-of final level (as percentage, e.g., 90 for 90%)
+  pdfMode?: boolean;
 }
 
 export function PayoffGraph({
@@ -39,9 +38,11 @@ export function PayoffGraph({
   strikeLevel,
   intrinsicValue,
   currentLevel,
-  variant = 'standard_barrier_rc',
+  variant: _variant = 'standard_barrier_rc',
   breakEvenPct,
+  pdfMode = false,
 }: PayoffGraphProps) {
+  void _variant;
   const [showCoupons, setShowCoupons] = useState(false);
   const [showBreakEven, setShowBreakEven] = useState(false);
 
@@ -94,7 +95,7 @@ export function PayoffGraph({
             <div className="mb-2">
               <p className="text-sm text-muted mb-1">
                 <span className="font-semibold text-valura-ink">Redemption:</span>{' '}
-                <span className="font-bold text-valura-ink">{payoffEntry.value.toFixed(2)}%</span>
+                <span className="font-bold text-primary-blue">{payoffEntry.value.toFixed(2)}%</span>
               </p>
               {showCoupons && totalEntry && (
                 <p className="text-sm text-muted">
@@ -159,7 +160,7 @@ export function PayoffGraph({
   const LegendChips = () => (
     <div className="flex flex-wrap gap-2 mt-4">
       <div className="flex items-center space-x-2 px-3 py-1 bg-valura-mint-100 rounded-full">
-        <div className="w-3 h-3 rounded-full bg-valura-ink"></div>
+        <div className="w-3 h-3 rounded-full bg-primary-blue"></div>
         <span className="text-xs text-muted">Payoff</span>
       </div>
       <div className="flex items-center space-x-2 px-3 py-1 bg-surface-2 rounded-full">
@@ -182,72 +183,86 @@ export function PayoffGraph({
   );
 
   return (
-    <CardShell className="p-6">
+    <CardShell className={pdfMode ? 'p-3' : 'p-6'} hover={!pdfMode}>
       <div className="flex justify-between items-start mb-4">
-        <SectionHeader
-          title="Payoff at Maturity"
-          subtitle="Redemption amount based on final underlying level"
-        />
-        <div className="flex items-center space-x-4">
-          {gearing && (
-            <div className="flex items-center space-x-2 px-3 py-1.5 bg-warning-light rounded-full border border-warning">
-              <TrendingDown className="w-4 h-4 text-warning" />
-              <span className="text-xs font-semibold text-valura-ink">
-                Downside Gearing: {gearing}x
-              </span>
-            </div>
-          )}
-          <label className="flex items-center space-x-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showCoupons}
-              onChange={(e) => setShowCoupons(e.target.checked)}
-              className="w-4 h-4 text-valura-ink border-border rounded focus:ring-valura-ink"
-            />
-            <span className="text-sm text-text-secondary">Show coupons</span>
-          </label>
-          {breakEvenPct !== undefined && (
+        {pdfMode ? (
+          <div className="text-sm font-extrabold text-text-primary">Payoff at Maturity</div>
+        ) : (
+          <SectionHeader
+            title="Payoff at Maturity"
+            subtitle="Redemption amount based on final underlying level"
+          />
+        )}
+        {!pdfMode && (
+          <div className="flex items-center space-x-4">
+            {gearing && (
+              <div className="flex items-center space-x-2 px-3 py-1.5 bg-warning-light rounded-full border border-warning">
+                <TrendingDown className="w-4 h-4 text-warning" />
+                <span className="text-xs font-semibold text-valura-ink">
+                  Downside Gearing: {gearing}x
+                </span>
+              </div>
+            )}
             <label className="flex items-center space-x-2 cursor-pointer">
               <input
                 type="checkbox"
-                checked={showBreakEven}
-                onChange={(e) => setShowBreakEven(e.target.checked)}
-                className="w-4 h-4 text-warning border-border rounded focus:ring-warning"
+                checked={showCoupons}
+                onChange={(e) => setShowCoupons(e.target.checked)}
+                className="w-4 h-4 text-valura-ink border-2 border-border rounded focus:ring-2 focus:ring-valura-ink focus:ring-offset-1"
+                style={{
+                  accentColor: 'var(--valura-ink)',
+                }}
               />
-              <span className="text-sm text-text-secondary">Show break-even</span>
+              <span className="text-sm text-muted font-medium">Show coupons</span>
             </label>
-          )}
-        </div>
+            {breakEvenPct !== undefined && (
+              <label className="flex items-center space-x-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showBreakEven}
+                  onChange={(e) => setShowBreakEven(e.target.checked)}
+                  className="w-4 h-4 text-warning-fg border-2 border-border rounded focus:ring-2 focus:ring-warning-fg focus:ring-offset-1"
+                  style={{
+                    accentColor: 'var(--warning-fg)',
+                  }}
+                />
+                <span className="text-sm text-muted font-medium">Show break-even</span>
+              </label>
+            )}
+          </div>
+        )}
       </div>
       
       {/* Annotation text boxes */}
+      {!pdfMode && (
       <div className="mt-4 space-y-2 text-sm text-muted">
         <div className="flex items-start space-x-2">
           <div className="w-3 h-3 rounded-full bg-success-fg mt-1 flex-shrink-0" />
           <p>
-            <span className="font-semibold text-valura-ink">Above barrier:</span> Principal back (upside capped; you don't participate in stock gains beyond coupons)
+            <span className="font-semibold text-text-primary">Above barrier:</span> Principal back (upside capped; you don't participate in stock gains beyond coupons)
           </p>
         </div>
         <div className="flex items-start space-x-2">
           <div className="w-3 h-3 rounded-full bg-danger-fg mt-1 flex-shrink-0" />
           <p>
-            <span className="font-semibold text-valura-ink">Below barrier:</span> Value moves with worst stock (like owning it from reference price), coupons help reduce loss
+            <span className="font-semibold text-text-primary">Below barrier:</span> Value moves with worst stock (like owning it from reference price), coupons help reduce loss
           </p>
         </div>
       </div>
+      )}
       
-      <ResponsiveContainer width="100%" height={450}>
+      <ResponsiveContainer width="100%" height={pdfMode ? 220 : 450}>
         <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
           <defs>
             {/* Gradient for payoff line */}
             <linearGradient id="payoffGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--valura-ink)" stopOpacity={1} />
-              <stop offset="100%" stopColor="var(--valura-ink)" stopOpacity={0.8} />
+              <stop offset="0%" stopColor="#4F46E5" stopOpacity={1} />
+              <stop offset="100%" stopColor="#6366F1" stopOpacity={0.9} />
             </linearGradient>
             {/* Gradient for total line */}
             <linearGradient id="totalGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--valura-mint-600)" stopOpacity={1} />
-              <stop offset="100%" stopColor="var(--valura-mint-600)" stopOpacity={0.8} />
+              <stop offset="0%" stopColor="#14B8A6" stopOpacity={1} />
+              <stop offset="100%" stopColor="#5EEAD4" stopOpacity={0.9} />
             </linearGradient>
           </defs>
           
@@ -257,20 +272,20 @@ export function PayoffGraph({
             dataKey="x"
             type="number"
             domain={[0, 150]}
-            label={{ value: 'Final Level (%)', position: 'insideBottom', offset: -10 }}
+            label={pdfMode ? undefined : { value: 'Final Level (%)', position: 'insideBottom', offset: -10 }}
             stroke="var(--text-secondary)"
-            tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
+            tick={{ fill: 'var(--text-secondary)', fontSize: pdfMode ? 10 : 12 }}
             ticks={[0, 25, 50, 75, 100, 125, 150]}
           />
           <YAxis
             domain={[0, 125]}
-            label={{ value: 'Payoff (%)', angle: -90, position: 'insideLeft' }}
+            label={pdfMode ? undefined : { value: 'Payoff (%)', angle: -90, position: 'insideLeft' }}
             stroke="var(--text-secondary)"
-            tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
+            tick={{ fill: 'var(--text-secondary)', fontSize: pdfMode ? 10 : 12 }}
             tickFormatter={(v) => `${v.toFixed(0)}%`}
           />
           
-          <Tooltip content={<CustomTooltip />} />
+          {!pdfMode && <Tooltip content={<CustomTooltip />} />}
           
           {/* Cash Redemption Zone (green) */}
           <ReferenceArea
@@ -304,7 +319,7 @@ export function PayoffGraph({
             stroke="var(--chart-barrier)"
             strokeDasharray="8 4"
             strokeWidth={2}
-            label={{
+            label={pdfMode ? undefined : {
               value: `Barrier ${barrierX.toFixed(0)}%`,
               position: 'top',
               fill: 'var(--text-secondary)',
@@ -319,7 +334,7 @@ export function PayoffGraph({
               stroke="var(--chart-strike)"
               strokeDasharray="6 3"
               strokeWidth={2}
-              label={{
+              label={pdfMode ? undefined : {
                 value: `Strike ${strikeX.toFixed(0)}%`,
                 position: 'bottom',
                 fill: 'var(--text-secondary)',
@@ -335,7 +350,7 @@ export function PayoffGraph({
               stroke="var(--warning-fg)"
               strokeDasharray="4 4"
               strokeWidth={1.5}
-              label={{
+              label={pdfMode ? undefined : {
                 value: `Break-even ${breakEvenPct.toFixed(0)}%`,
                 position: 'bottom',
                 fill: 'var(--warning-fg)',
@@ -352,8 +367,9 @@ export function PayoffGraph({
             stroke="url(#payoffGradient)"
             strokeWidth={3}
             dot={false}
-            activeDot={{ r: 6, fill: 'var(--valura-ink)' }}
+            activeDot={{ r: 6, fill: '#4F46E5' }}
             name="Redemption"
+            isAnimationActive={!pdfMode}
           />
           
           {/* Total curve (if coupons shown) */}
@@ -367,6 +383,7 @@ export function PayoffGraph({
               dot={false}
               activeDot={{ r: 5, fill: '#10B981' }}
               name="Total (incl. coupons)"
+              isAnimationActive={!pdfMode}
             />
           )}
           
@@ -415,8 +432,9 @@ export function PayoffGraph({
         </LineChart>
       </ResponsiveContainer>
       
-      <LegendChips />
+      {!pdfMode && <LegendChips />}
       
+      {!pdfMode && (
       <div className="mt-4 flex flex-wrap gap-4 text-xs">
         <div className="flex items-center space-x-2">
           <div className="w-4 h-4 rounded bg-success/20 border border-success"></div>
@@ -433,13 +451,16 @@ export function PayoffGraph({
           </div>
         )}
       </div>
+      )}
       
+      {!pdfMode && (
       <p className="text-sm text-text-secondary mt-4 leading-relaxed">
         This chart shows the redemption amount at maturity (payoff) depending on the
         final level of the underlying (reference value). The <span className="font-semibold text-success">green zone</span> indicates
         safe redemption (above barrier), while the <span className="font-semibold text-danger">red zone</span> shows the risk of
         share conversion. The <span className="font-semibold text-success">green circle</span> marks your current position.
       </p>
+      )}
     </CardShell>
   );
 }

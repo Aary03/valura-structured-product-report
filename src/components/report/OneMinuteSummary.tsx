@@ -29,7 +29,7 @@ export function OneMinuteSummary({ terms, timestamp }: OneMinuteSummaryProps) {
     : 'annually';
 
   return (
-    <CardShell className="p-6 bg-surface-2">
+    <CardShell className="p-6" style={{ backgroundColor: 'var(--surface-2)' }}>
       <div className="space-y-4">
         {/* Three key rows */}
         <div className="flex items-start space-x-4">
@@ -37,8 +37,8 @@ export function OneMinuteSummary({ terms, timestamp }: OneMinuteSummaryProps) {
             <DollarSign className="w-6 h-6 text-success-fg" />
           </div>
           <div>
-            <div className="font-semibold text-valura-ink mb-1">Earn:</div>
-            <div className="text-muted">
+            <div className="font-semibold text-text-primary mb-1">Earn:</div>
+            <div className="text-text-secondary">
               {couponRateText} coupons (paid {couponFreqText})
             </div>
           </div>
@@ -46,11 +46,11 @@ export function OneMinuteSummary({ terms, timestamp }: OneMinuteSummaryProps) {
 
         <div className="flex items-start space-x-4">
           <div className="flex-shrink-0 mt-1">
-            <Shield className="w-6 h-6 text-valura-ink" />
+            <Shield className="w-6 h-6 text-primary-blue" />
           </div>
           <div>
-            <div className="font-semibold text-valura-ink mb-1">Principal:</div>
-            <div className="text-muted">
+            <div className="font-semibold text-text-primary mb-1">Principal:</div>
+            <div className="text-text-secondary">
               100% returned if the <span className="font-semibold italic">{basketLabel}</span> is ≥ {barrierPct} of its reference price at maturity
             </div>
           </div>
@@ -58,11 +58,11 @@ export function OneMinuteSummary({ terms, timestamp }: OneMinuteSummaryProps) {
 
         <div className="flex items-start space-x-4">
           <div className="flex-shrink-0 mt-1">
-            <AlertTriangle className="w-6 h-6 text-warning-fg" />
+            <AlertTriangle className="w-6 h-6 text-warning" />
           </div>
           <div>
-            <div className="font-semibold text-valura-ink mb-1">Risk:</div>
-            <div className="text-muted">
+            <div className="font-semibold text-text-primary mb-1">Risk:</div>
+            <div className="text-text-secondary">
               If below {barrierPct} at maturity, you receive shares of the {basketLabel} → you can lose money
             </div>
           </div>
@@ -70,7 +70,7 @@ export function OneMinuteSummary({ terms, timestamp }: OneMinuteSummaryProps) {
 
         {/* Footer disclaimer */}
         <div className="pt-4 border-t border-border">
-          <div className="flex items-center space-x-2 text-xs text-muted">
+          <div className="flex items-center space-x-2 text-xs text-text-secondary">
             <span className="px-2 py-1 bg-warning-bg text-warning-fg rounded-full font-medium">
               Indicative terms
             </span>

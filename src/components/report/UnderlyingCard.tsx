@@ -16,6 +16,9 @@ interface UnderlyingCardProps {
 
 export function UnderlyingCard({ summary, isWorstOf = false }: UnderlyingCardProps) {
   const { logoUrl, fallback } = getLogoWithFallback(summary.symbol, summary.name);
+  const earningsDateText = summary.nextEarningsDate
+    ? new Date(summary.nextEarningsDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    : '—';
   
   const performanceColor = summary.performancePct >= 0 ? 'text-success' : 'text-danger';
   const distanceColor = summary.distanceToBarrierPctPts >= 0 ? 'text-success' : 'text-danger';
@@ -39,7 +42,7 @@ export function UnderlyingCard({ summary, isWorstOf = false }: UnderlyingCardPro
     : 'bg-warning-light text-warning border-warning';
 
   return (
-    <CardShell className="p-6 relative">
+    <CardShell className="p-7 relative">
 
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
@@ -96,7 +99,7 @@ export function UnderlyingCard({ summary, isWorstOf = false }: UnderlyingCardPro
       </div>
 
       {/* Body - Grid */}
-      <div className="grid grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-2 gap-5 mb-5">
         {/* Spot Price */}
         <div>
           <div className="text-xs text-text-secondary mb-1">Spot Price</div>
@@ -157,6 +160,38 @@ export function UnderlyingCard({ summary, isWorstOf = false }: UnderlyingCardPro
           </div>
         )}
 
+        {/* Sector / Industry */}
+        {(summary.sector || summary.industry) && (
+          <div>
+            <div className="text-xs text-text-secondary mb-1">Sector</div>
+            <div className="text-sm font-semibold text-text-primary truncate">
+              {summary.sector || '—'}
+            </div>
+            <div className="text-xs text-text-secondary truncate mt-0.5">
+              {summary.industry || '—'}
+            </div>
+          </div>
+        )}
+
+        {/* Valuation */}
+        <div>
+          <div className="text-xs text-text-secondary mb-1">Valuation</div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-lg bg-surface-2 border border-border-light px-3 py-2">
+              <div className="text-[11px] text-text-secondary">P/E</div>
+              <div className="text-sm font-bold text-text-primary">
+                {summary.pe != null ? formatNumber(summary.pe, 1) : '—'}
+              </div>
+            </div>
+            <div className="rounded-lg bg-surface-2 border border-border-light px-3 py-2">
+              <div className="text-[11px] text-text-secondary">Beta</div>
+              <div className="text-sm font-bold text-text-primary">
+                {summary.beta != null ? formatNumber(summary.beta, 2) : '—'}
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Market Cap */}
         {summary.marketCap && (
           <div>
@@ -207,6 +242,25 @@ export function UnderlyingCard({ summary, isWorstOf = false }: UnderlyingCardPro
             </div>
           </div>
         )}
+
+        {/* Dividends / Earnings */}
+        <div>
+          <div className="text-xs text-text-secondary mb-1">Dividends / Earnings</div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-lg bg-surface-2 border border-border-light px-3 py-2">
+              <div className="text-[11px] text-text-secondary">Div Yield</div>
+              <div className="text-sm font-bold text-text-primary">
+                {summary.dividendYieldPct != null ? `${formatNumber(summary.dividendYieldPct, 2)}%` : '—'}
+              </div>
+            </div>
+            <div className="rounded-lg bg-surface-2 border border-border-light px-3 py-2">
+              <div className="text-[11px] text-text-secondary">Earnings</div>
+              <div className="text-sm font-bold text-text-primary truncate">
+                {earningsDateText}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Target Price (if available) */}

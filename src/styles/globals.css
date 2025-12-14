@@ -9,63 +9,101 @@
   
   body {
     background: var(--bg-grad);
-    @apply text-text-primary font-sans;
+    color: var(--text-primary);
+    @apply font-sans;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   
   h1, h2, h3, h4, h5, h6 {
     @apply font-bold;
-    color: var(--valura-ink);
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
+  }
+  
+  h1 {
+    letter-spacing: -0.02em;
   }
 }
 
 @layer components {
   .section-card {
-    @apply bg-white rounded-2xl p-6 border;
-    box-shadow: var(--shadow-soft);
-    border-color: var(--border);
+    @apply bg-white p-6 border;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-card);
+    border-color: var(--border-light);
+    border-width: 1px;
   }
   
   .header-badge {
-    @apply text-white px-4 py-2 rounded-md font-bold text-xl;
-    background: var(--valura-ink);
+    @apply text-white px-5 py-3 rounded-lg font-bold text-xl;
+    background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-blue-light) 100%);
+    box-shadow: var(--shadow-button);
   }
   
   .btn-primary {
-    @apply text-white px-6 py-3 rounded-md font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
-    background: var(--valura-ink);
+    @apply text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+    background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-blue-light) 100%);
+    box-shadow: var(--shadow-button);
+    border: none;
   }
   
-  .btn-primary:hover {
-    background: var(--valura-mint-600);
+  .btn-primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, var(--primary-blue-dark) 0%, var(--primary-blue) 100%);
+    box-shadow: var(--shadow-button-hover);
+    transform: translateY(-2px);
+  }
+  
+  .btn-primary:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: var(--shadow-button);
   }
   
   .btn-secondary {
-    @apply bg-grey-light text-white px-6 py-3 rounded-md font-semibold hover:bg-grey-medium transition-colors;
+    @apply px-6 py-3 rounded-lg font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply bg-surface text-text-primary border border-border;
+    box-shadow: var(--shadow-soft);
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    background: var(--surface-2);
+    box-shadow: var(--shadow-medium);
+    transform: translateY(-1px);
+  }
+
+  .btn-secondary:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: var(--shadow-soft);
   }
   
   .input-field {
-    @apply w-full px-4 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:border-transparent;
+    @apply w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all;
     background: var(--surface);
-    color: var(--valura-ink);
+    color: var(--text-primary);
+    border-color: var(--border);
+    font-size: 0.9375rem;
   }
   
   .input-field:focus {
-    --tw-ring-color: var(--valura-ink);
+    --tw-ring-color: var(--primary-blue);
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
   }
   
   .input-field::placeholder {
-    color: var(--muted);
+    color: var(--muted-light);
   }
   
   .input-field:disabled {
     background: var(--surface-2);
     color: var(--muted);
     cursor: not-allowed;
+    opacity: 0.6;
   }
   
   .label {
     @apply block text-sm font-semibold mb-2;
-    color: var(--valura-ink);
+    color: var(--text-primary);
   }
   
   .performance-positive {
@@ -81,6 +119,48 @@
   .text-balance {
     text-wrap: balance;
   }
+}
+
+/* PDF capture mode (html2pdf uses screen CSS, not @media print) */
+body.pdf-mode {
+  background: #ffffff !important;
+}
+
+body.pdf-mode #report-container.report-root {
+  background: #ffffff;
+}
+
+body.pdf-mode .report-stack {
+  gap: 12px !important;
+}
+
+body.pdf-mode #report-container {
+  padding: 12px 12px !important;
+}
+
+body.pdf-mode .pdf-single-col {
+  grid-template-columns: 1fr !important;
+}
+
+body.pdf-mode * {
+  animation: none !important;
+  transition: none !important;
+}
+
+body.pdf-mode [class*="hover:-translate-y"],
+body.pdf-mode [class*="hover:shadow"] {
+  transform: none !important;
+}
+
+body.pdf-mode .no-print {
+  display: none !important;
+}
+
+body.pdf-mode .no-break,
+body.pdf-mode .section-card,
+body.pdf-mode [class*="CardShell"] {
+  break-inside: avoid !important;
+  page-break-inside: avoid !important;
 }
 
 /* Print styles */

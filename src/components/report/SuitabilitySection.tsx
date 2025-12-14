@@ -6,6 +6,7 @@
 import { CardShell } from '../common/CardShell';
 import { SectionHeader } from '../common/SectionHeader';
 import { CheckCircle, XCircle } from 'lucide-react';
+import { Pill } from '../common/Pill';
 
 export function SuitabilitySection() {
   const goodFitCriteria = [
@@ -29,36 +30,54 @@ export function SuitabilitySection() {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
         {/* Good Fit Column */}
-        <div className="space-y-4">
-          <div className="flex items-center space-x-2 mb-4">
-            <CheckCircle className="w-6 h-6 text-success-fg" />
-            <h3 className="text-lg font-semibold text-valura-ink">Good fit if…</h3>
+        <div
+          className="space-y-4 p-4 rounded-2xl border"
+          style={{
+            background: 'linear-gradient(135deg, var(--success-bg) 0%, #ecfdf3 100%)',
+            borderColor: 'var(--success-border)',
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <CheckCircle className="w-6 h-6 text-success-fg" />
+              <h3 className="text-lg font-semibold text-text-primary">Good fit if…</h3>
+            </div>
+            <Pill variant="success">Good fit</Pill>
           </div>
           <div className="space-y-3">
             {goodFitCriteria.map((criterion, index) => (
               <div key={index} className="flex items-start space-x-3">
                 <div className="flex-shrink-0 mt-1">
-                  <div className="w-2 h-2 rounded-full bg-success-fg" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-success" />
                 </div>
-                <p className="text-muted flex-1 text-sm">{criterion}</p>
+                <p className="text-text-secondary flex-1 text-sm">{criterion}</p>
               </div>
             ))}
           </div>
         </div>
 
         {/* Not a Fit Column */}
-        <div className="space-y-4">
-          <div className="flex items-center space-x-2 mb-4">
-            <XCircle className="w-6 h-6 text-danger-fg" />
-            <h3 className="text-lg font-semibold text-valura-ink">Not a fit if…</h3>
+        <div
+          className="space-y-4 p-4 rounded-2xl border"
+          style={{
+            background: 'linear-gradient(135deg, var(--danger-bg) 0%, #fff5f5 100%)',
+            borderColor: 'var(--danger-border)',
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <XCircle className="w-6 h-6 text-danger-fg" />
+              <h3 className="text-lg font-semibold text-text-primary">Not a fit if…</h3>
+            </div>
+            <Pill variant="danger">Not a fit</Pill>
           </div>
           <div className="space-y-3">
             {notFitCriteria.map((criterion, index) => (
               <div key={index} className="flex items-start space-x-3">
                 <div className="flex-shrink-0 mt-1">
-                  <div className="w-2 h-2 rounded-full bg-danger-fg" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-danger" />
                 </div>
-                <p className="text-muted flex-1 text-sm">{criterion}</p>
+                <p className="text-text-secondary flex-1 text-sm">{criterion}</p>
               </div>
             ))}
           </div>

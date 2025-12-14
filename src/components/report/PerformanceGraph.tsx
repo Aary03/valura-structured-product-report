@@ -31,9 +31,10 @@ interface PerformanceGraphProps {
   initialFixings?: Record<string, number>;
   basketType?: 'single' | 'worst_of';
   worstUnderlyingIndex?: number | null;
+  pdfMode?: boolean;
 }
 
-const COLORS = ['var(--valura-ink)', 'var(--valura-mint-600)', 'var(--warning-fg)', 'var(--danger-fg)'];
+const COLORS = ['#4F46E5', '#14B8A6', '#F97316', '#8B5CF6']; // Indigo, Teal, Coral, Purple
 const GRADIENT_IDS = ['gradient1', 'gradient2', 'gradient3', 'gradient4'];
 
 export function PerformanceGraph({
@@ -44,6 +45,7 @@ export function PerformanceGraph({
   initialFixings = {},
   basketType = 'single',
   worstUnderlyingIndex = null,
+  pdfMode = false,
 }: PerformanceGraphProps) {
   if (historicalData.length === 0) {
     return (
@@ -170,15 +172,33 @@ export function PerformanceGraph({
   const barrierY = barrierLevel * 100;
   const strikeY = strikeLevel ? strikeLevel * 100 : null;
 
+  const formatMonthYear = (value: string) => {
+    // Keep labels short for PDF to avoid overlaps: "Dec 24"
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return value;
+    return d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+  };
+
   return (
-    <CardShell className="p-6">
-      <SectionHeader
-        title="Underlying price history (not product performance)"
-        subtitle="Historical price normalized to initial fixing = 100%"
-      />
+    <CardShell className={pdfMode ? "p-3" : "p-6"} hover={!pdfMode}>
+      {pdfMode ? (
+        <div className="mb-2">
+          <div className="text-sm font-extrabold text-text-primary">
+            Underlying price history (not product performance)
+          </div>
+          <div className="text-xs text-text-secondary">
+            Normalized to initial fixing = 100
+          </div>
+        </div>
+      ) : (
+        <SectionHeader
+          title="Underlying price history (not product performance)"
+          subtitle="Historical price normalized to initial fixing = 100%"
+        />
+      )}
       
-      <ResponsiveContainer width="100%" height={400}>
-        <AreaChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+      <ResponsiveContainer width="100%" height={pdfMode ? 220 : 400}>
+        <AreaChart data={chartData} margin={{ top: 14, right: pdfMode ? 8 : 30, left: pdfMode ? 6 : 20, bottom: pdfMode ? 28 : 60 }}>
           <defs>
             {COLORS.map((color, index) => (
               <linearGradient key={GRADIENT_IDS[index]} id={GRADIENT_IDS[index]} x1="0" y1="0" x2="0" y2="1">
@@ -192,19 +212,20 @@ export function PerformanceGraph({
           
           <XAxis
             dataKey="date"
-            tickFormatter={(value) => formatDate(value, 'short')}
+            tickFormatter={(value) => (pdfMode ? formatMonthYear(String(value)) : formatDate(String(value), 'short'))}
             stroke="var(--text-secondary)"
-            tick={{ fill: 'var(--text-secondary)', fontSize: 11 }}
-            angle={-30}
-            textAnchor="end"
-            height={70}
+            tick={{ fill: 'var(--text-secondary)', fontSize: pdfMode ? 9 : 11 }}
+            angle={pdfMode ? 0 : -30}
+            textAnchor={pdfMode ? 'middle' : 'end'}
+            height={pdfMode ? 36 : 70}
+            minTickGap={pdfMode ? 40 : 10}
             interval="preserveStartEnd"
           />
           <YAxis
             domain={['auto', 'auto']}
-            label={{ value: 'Normalized Level (%)', angle: -90, position: 'insideLeft' }}
             stroke="var(--text-secondary)"
-            tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
+            tick={{ fill: 'var(--text-secondary)', fontSize: pdfMode ? 9 : 12 }}
+            width={pdfMode ? 36 : 48}
             tickFormatter={(v) => {
               // Ensure we're formatting as percentage, not raw numbers
               const num = typeof v === 'number' ? v : parseFloat(String(v));
@@ -214,7 +235,7 @@ export function PerformanceGraph({
           />
           
           <Tooltip content={<CustomTooltip />} />
-          <Legend />
+          {!pdfMode && <Legend />}
           
           {/* 100% reference line */}
           <ReferenceLine
@@ -222,7 +243,7 @@ export function PerformanceGraph({
             stroke="var(--chart-barrier)"
             strokeDasharray="2 2"
             strokeWidth={1}
-            label={{
+            label={pdfMode ? undefined : {
               value: 'Initial Fixing (100%)',
               position: 'right',
               fill: 'var(--text-tertiary)',
@@ -236,7 +257,7 @@ export function PerformanceGraph({
             stroke="var(--chart-barrier)"
             strokeDasharray="8 4"
             strokeWidth={2}
-            label={{
+            label={pdfMode ? undefined : {
               value: `Barrier ${barrierY.toFixed(0)}%`,
               position: 'right',
               fill: 'var(--text-secondary)',
@@ -251,7 +272,7 @@ export function PerformanceGraph({
               stroke="var(--chart-strike)"
               strokeDasharray="6 3"
               strokeWidth={2}
-              label={{
+              label={pdfMode ? undefined : {
                 value: `Strike ${strikeY.toFixed(0)}%`,
                 position: 'right',
                 fill: 'var(--text-secondary)',
@@ -277,6 +298,7 @@ export function PerformanceGraph({
                 name={symbol}
                 dot={false}
                 activeDot={{ r: 5, fill: COLORS[index % COLORS.length] }}
+                isAnimationActive={!pdfMode}
               />
             );
           })}
@@ -291,11 +313,12 @@ export function PerformanceGraph({
               dot={false}
               activeDot={{ r: 6, fill: '#EF4444' }}
               name="Worst-of"
+              isAnimationActive={!pdfMode}
             />
           )}
           
-          {/* End labels */}
-          {underlyingSymbols.map((symbol, index) => {
+          {/* End labels (screen only, they overlap in PDF) */}
+          {!pdfMode && underlyingSymbols.map((symbol, index) => {
             const lastValue = chartData.length > 0 
               ? chartData[chartData.length - 1][symbol] 
               : 100;
@@ -314,7 +337,7 @@ export function PerformanceGraph({
           })}
           
           {/* Worst-of end label */}
-          {basketType === 'worst_of' && chartData.length > 0 && (
+          {!pdfMode && basketType === 'worst_of' && chartData.length > 0 && (
             <Line
               key="label-worst-of"
               type="monotone"
@@ -330,6 +353,7 @@ export function PerformanceGraph({
       </ResponsiveContainer>
       
       {/* Mini stats row */}
+      {!pdfMode && (
       <div className="grid grid-cols-3 gap-4 mt-6">
         <div className="flex items-center space-x-2 px-3 py-2 bg-primary-light rounded-lg">
           <BarChart3 className="w-4 h-4 text-primary" />
@@ -361,12 +385,15 @@ export function PerformanceGraph({
           </div>
         </div>
       </div>
+      )}
       
+      {!pdfMode && (
       <p className="text-sm text-text-secondary mt-4 leading-relaxed">
         This graph shows the price history for the underlyings, normalized to initial fixing = 100%.
         The barrier and strike levels are shown as reference lines. Historical movements help assess
         the likelihood of barrier breach.
       </p>
+      )}
     </CardShell>
   );
 }

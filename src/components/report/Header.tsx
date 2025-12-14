@@ -4,7 +4,6 @@
  */
 
 import type { ReverseConvertibleTerms } from '../../products/reverseConvertible/terms';
-import { frequencyToString } from '../../products/common/productTypes';
 import { formatPercent } from '../../core/utils/math';
 
 interface HeaderProps {

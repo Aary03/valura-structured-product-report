@@ -11,6 +11,7 @@ import { getLogoWithFallback } from '../../utils/logo';
 import { calculateLookbackReturn, type LookbackPeriod } from '../../services/lookbackReturns';
 import type { ReverseConvertibleTerms } from '../../products/reverseConvertible/terms';
 import { Info } from 'lucide-react';
+import { CardShell } from '../common/CardShell';
 
 interface UnderlyingsTableProps {
   underlyingData: UnderlyingData[];
@@ -37,23 +38,23 @@ export function UnderlyingsTable({
   const refPrices = referencePrices || underlyingData.map(d => d.currentPrice);
   if (loading) {
     return (
-      <div className="section-card">
-        <h2 className="text-2xl font-bold mb-4 text-valura-ink">
+      <CardShell>
+        <h2 className="text-2xl font-bold mb-4 text-text-primary">
           More about the underlyings
         </h2>
         <div className="text-center py-8 text-muted">Loading data...</div>
-      </div>
+      </CardShell>
     );
   }
 
   if (underlyingData.length === 0) {
     return (
-      <div className="section-card">
-        <h2 className="text-2xl font-bold mb-4 text-valura-ink">
+      <CardShell>
+        <h2 className="text-2xl font-bold mb-4 text-text-primary">
           More about the underlyings
         </h2>
         <div className="text-center py-8 text-muted">No data available</div>
-      </div>
+      </CardShell>
     );
   }
 
@@ -89,23 +90,30 @@ export function UnderlyingsTable({
   };
 
   return (
-    <div className="section-card pb-2">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold text-valura-ink">
-          More about the underlyings
-        </h2>
+    <CardShell className="p-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-text-primary">More about the underlyings</h2>
+          <p className="text-sm text-text-secondary mt-1">
+            Prices are indicative. Returns are for the selected lookback window.
+          </p>
+        </div>
+
         {/* Lookback Selector */}
-        <div className="flex items-center space-x-2">
-          <span className="text-sm text-muted">Lookback:</span>
-          <div className="flex space-x-1 bg-surface-2 rounded-lg p-1">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-text-secondary">Lookback:</span>
+          <div
+            className="flex gap-1 bg-surface-2 rounded-xl p-1 border border-border-light"
+            style={{ boxShadow: 'var(--shadow-soft)' }}
+          >
             {(['1M', '3M', '6M', '1Y', '3Y'] as LookbackPeriod[]).map((period) => (
               <button
                 key={period}
                 onClick={() => setLookbackPeriod(period)}
-                className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   lookbackPeriod === period
-                    ? 'bg-valura-ink text-white'
-                    : 'text-muted hover:bg-border'
+                    ? 'bg-primary-blue text-white shadow-soft'
+                    : 'text-text-secondary hover:bg-surface-3 hover:text-text-primary'
                 }`}
               >
                 {period}
@@ -114,25 +122,17 @@ export function UnderlyingsTable({
           </div>
         </div>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse table-fixed">
-          <colgroup>
-            <col className="w-[140px]" />
-            <col className="w-[130px]" />
-            <col className="w-[90px]" />
-            <col className="w-[120px]" />
-            <col className="w-[140px]" />
-            <col className="w-[130px]" />
-            <col className="w-[140px]" />
-            <col className="w-[110px]" />
-          </colgroup>
+
+      {/* Give the table room so headers don't wrap into each other */}
+      <div className="overflow-x-auto mt-4">
+        <table className="min-w-[980px] w-full border-collapse">
           <thead>
             <tr className="bg-surface-2">
-              <th className="text-left p-3 border-b-2 border-border font-semibold text-valura-ink text-sm">
+              <th className="text-left px-4 py-4 border-b-2 border-border font-semibold text-text-primary text-sm whitespace-nowrap">
                 Underlyings
               </th>
-              <th className="text-left p-3 border-b-2 border-border font-semibold text-valura-ink text-sm">
-                <div className="flex items-center space-x-1">
+              <th className="text-left px-4 py-4 border-b-2 border-border font-semibold text-text-primary text-sm whitespace-nowrap">
+                <div className="flex items-center gap-1">
                   <span>Reference Price</span>
                   <div className="group relative">
                     <Info className="w-3 h-3 text-text-secondary cursor-help" />
@@ -143,22 +143,22 @@ export function UnderlyingsTable({
                   <span className="text-xs text-text-secondary font-normal">(indicative)</span>
                 </div>
               </th>
-              <th className="text-left p-3 border-b-2 border-border font-semibold text-valura-ink text-sm">
+              <th className="text-left px-4 py-4 border-b-2 border-border font-semibold text-text-primary text-sm whitespace-nowrap">
                 Spot (today)
               </th>
-              <th className="text-left p-3 border-b-2 border-border font-semibold text-valura-ink text-sm">
+              <th className="text-left px-4 py-4 border-b-2 border-border font-semibold text-text-primary text-sm whitespace-nowrap">
                 Return ({lookbackPeriod})
               </th>
-              <th className="text-left p-3 border-b-2 border-border font-semibold text-valura-ink text-sm">
+              <th className="text-left px-4 py-4 border-b-2 border-border font-semibold text-text-primary text-sm whitespace-nowrap">
                 Knock-in Price
               </th>
-              <th className="text-left p-3 border-b-2 border-border font-semibold text-valura-ink text-sm">
+              <th className="text-left px-4 py-4 border-b-2 border-border font-semibold text-text-primary text-sm whitespace-nowrap">
                 Analysts Estimates
               </th>
-              <th className="text-left p-3 border-b-2 border-border font-semibold text-valura-ink text-sm">
+              <th className="text-left px-4 py-4 border-b-2 border-border font-semibold text-text-primary text-sm whitespace-nowrap">
                 Analyst Consensus
               </th>
-              <th className="text-left p-3 border-b-2 border-border font-semibold text-valura-ink text-sm">
+              <th className="text-left px-4 py-4 border-b-2 border-border font-semibold text-text-primary text-sm whitespace-nowrap">
                 Target Price
               </th>
             </tr>
@@ -170,8 +170,8 @@ export function UnderlyingsTable({
               
               return (
                 <tr key={index} className="border-b border-border hover:bg-valura-mint-100/30">
-                  <td className="p-3">
-                    <div className="flex items-center space-x-2 min-w-0">
+                  <td className="px-4 py-4">
+                    <div className="flex items-center gap-2 min-w-0">
                       <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center overflow-hidden border border-border flex-shrink-0 shadow-sm relative">
                         <img
                           src={logoUrl}
@@ -185,27 +185,27 @@ export function UnderlyingsTable({
                               const existingFallback = parent.querySelector('.logo-fallback');
                               if (!existingFallback) {
                                 const fallbackEl = document.createElement('div');
-                                    fallbackEl.className = 'logo-fallback text-valura-ink font-bold text-[10px] absolute inset-0 flex items-center justify-center';
+                                fallbackEl.className = 'logo-fallback text-text-primary font-bold text-[10px] absolute inset-0 flex items-center justify-center';
                                 fallbackEl.textContent = fallback;
                                 parent.appendChild(fallbackEl);
                               }
                             }
                           }}
                         />
-                        <div className="logo-fallback text-valura-ink font-bold text-[10px] absolute inset-0 flex items-center justify-center hidden">
+                        <div className="logo-fallback text-text-primary font-bold text-[10px] absolute inset-0 flex items-center justify-center hidden">
                           {fallback}
                         </div>
                       </div>
-                      <span className="font-semibold text-grey-dark text-sm truncate">{data.symbol}</span>
+                      <span className="font-semibold text-text-primary text-sm truncate">{data.symbol}</span>
                     </div>
                   </td>
-                  <td className="p-3 text-grey-medium text-sm">
+                  <td className="px-4 py-4 text-text-secondary text-sm whitespace-nowrap">
                     {formatNumber(metrics.referencePrice, 2)}
                   </td>
-                  <td className="p-3 font-semibold text-grey-dark text-sm">
+                  <td className="px-4 py-4 font-semibold text-text-primary text-sm whitespace-nowrap">
                     {formatNumber(data.currentPrice, 2)}
                   </td>
-                  <td className="p-3 font-semibold text-sm">
+                  <td className="px-4 py-4 font-semibold text-sm whitespace-nowrap">
                     {metrics.lookbackReturn !== null ? (
                       <span className={metrics.lookbackReturn >= 0 ? 'text-success' : 'text-danger'}>
                         {metrics.lookbackReturn >= 0 ? '▲' : '▼'} {formatPercent(metrics.lookbackReturn / 100, 1)}
@@ -214,25 +214,25 @@ export function UnderlyingsTable({
                       <span className="text-text-secondary">—</span>
                     )}
                   </td>
-                  <td className="p-3 font-semibold text-grey-dark text-sm">
+                  <td className="px-4 py-4 font-semibold text-text-primary text-sm whitespace-nowrap">
                     ${formatNumber(metrics.knockInPrice, 2)}
                   </td>
-                  <td className="p-3 text-grey-medium text-sm">
+                  <td className="px-4 py-4 text-text-secondary text-sm whitespace-nowrap">
                     {formatAnalystEstimates(data)}
                   </td>
-                  <td className="p-3 text-grey-medium text-sm">
+                  <td className="px-4 py-4 text-text-secondary text-sm whitespace-nowrap">
                     {data.analystConsensus || '—'}
                   </td>
-                  <td className="p-3 font-semibold text-grey-dark text-sm">
+                  <td className="px-4 py-4 font-semibold text-text-primary text-sm whitespace-nowrap">
                     {data.targetPrice ? formatNumber(data.targetPrice, 2) : '—'}
                   </td>
                 </tr>
               );
             })}
-          </tbody>
-        </table>
-      </div>
+        </tbody>
+      </table>
     </div>
-  );
+  </CardShell>
+);
 }
 

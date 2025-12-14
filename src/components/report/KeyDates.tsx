@@ -21,9 +21,16 @@ export function KeyDates({ pricingDate, couponSchedule, maturityDate }: KeyDates
     <div>
       <div className="flex flex-wrap items-center gap-3">
         {/* Pricing Date */}
-        <div className="flex items-center space-x-2 px-4 py-2 bg-valura-ink rounded-full border border-valura-ink">
-          <Calendar className="w-4 h-4 text-white" />
-          <span className="text-sm font-medium text-white">
+        <div 
+          className="flex items-center space-x-2 px-5 py-2.5 rounded-full border text-white"
+          style={{
+            background: 'linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-blue-light) 100%)',
+            borderColor: 'var(--primary-blue)',
+            boxShadow: 'var(--shadow-soft)',
+          }}
+        >
+          <Calendar className="w-4 h-4" />
+          <span className="text-sm font-semibold">
             Pricing: {formatDate(pricingDate, 'short')}
           </span>
         </div>
@@ -32,19 +39,31 @@ export function KeyDates({ pricingDate, couponSchedule, maturityDate }: KeyDates
         {nextCoupons.map((date, index) => (
           <div 
             key={date} 
-            className="flex items-center space-x-2 px-4 py-2 bg-surface-2 rounded-full border border-border"
+            className="flex items-center space-x-2 px-5 py-2.5 rounded-full border hover:shadow-medium transition-all"
+            style={{
+              backgroundColor: 'var(--accent-teal-bg)',
+              borderColor: 'var(--accent-teal)',
+              boxShadow: 'var(--shadow-soft)',
+            }}
           >
-            <Clock className="w-4 h-4 text-valura-ink" />
-            <span className="text-sm font-medium text-valura-ink">
+            <Clock className="w-4 h-4 text-accent-teal-dark" />
+            <span className="text-sm font-semibold text-accent-teal-dark">
               Coupon {index + 1}: {formatDate(date, 'short')}
             </span>
           </div>
         ))}
 
         {/* Maturity Date */}
-        <div className="flex items-center space-x-2 px-4 py-2 bg-valura-mint rounded-full border border-valura-mint">
-          <Calendar className="w-4 h-4 text-valura-ink" />
-          <span className="text-sm font-medium text-valura-ink">
+        <div 
+          className="flex items-center space-x-2 px-5 py-2.5 rounded-full border"
+          style={{
+            backgroundColor: 'var(--accent-coral-bg)',
+            borderColor: 'var(--accent-coral)',
+            boxShadow: 'var(--shadow-soft)',
+          }}
+        >
+          <Calendar className="w-4 h-4 text-accent-coral-dark" />
+          <span className="text-sm font-semibold text-accent-coral-dark">
             Maturity: {formatDate(maturityDate, 'short')}
           </span>
         </div>

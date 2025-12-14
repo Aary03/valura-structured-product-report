@@ -16,14 +16,17 @@ export function CardShell({ children, className = '', glass = false, hover = tru
   return (
     <div
       className={`
-        rounded-xl border border-border
+        border
         ${glass ? 'bg-glass backdrop-blur-sm' : 'bg-surface'}
-        ${hover ? 'hover:shadow-card hover:-translate-y-0.5 transition-all duration-200' : ''}
+        ${hover ? 'hover:shadow-strong hover:-translate-y-1 transition-all duration-300' : ''}
         shadow-card
+        no-break
         ${className}
       `}
       style={{
         borderRadius: 'var(--radius-xl)',
+        borderColor: 'var(--border-light)',
+        borderWidth: '1px',
       }}
     >
       {children}

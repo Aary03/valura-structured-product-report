@@ -98,9 +98,15 @@ export function HeroHeader({
           </div>
           <p className="text-text-secondary text-xl">{variantLabel}</p>
         </div>
-        <div className="flex-shrink-0 ml-4 px-4 py-2 rounded-md font-bold text-base text-white" style={{ background: 'var(--valura-ink)' }}>
-          <div className="text-sm font-normal mb-1 opacity-90">Key Features</div>
-          <div className="text-base">
+        <div 
+          className="flex-shrink-0 ml-4 px-5 py-3 rounded-lg font-bold text-base text-white"
+          style={{ 
+            background: 'linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-blue-light) 100%)',
+            boxShadow: 'var(--shadow-button)',
+          }}
+        >
+          <div className="text-sm font-normal mb-1 opacity-95">Key Features</div>
+          <div className="text-base font-semibold">
             {terms.tenorMonths}M • {terms.currency} • {barrierOrStrike}
           </div>
         </div>
@@ -124,12 +130,12 @@ export function HeroHeader({
 
       {/* Basket Info (if worst-of) */}
       {terms.basketType === 'worst_of' && (
-        <div className="mt-4 p-4 bg-valura-mint-100 rounded-xl border border-border">
+        <div className="mt-4 p-4 rounded-xl border" style={{ backgroundColor: 'var(--accent-teal-bg)', borderColor: 'var(--accent-teal)' }}>
           <div className="flex items-center space-x-2">
-            <Layers className="w-5 h-5 text-valura-ink" />
+            <Layers className="w-5 h-5 text-accent-teal-dark" />
             <div>
-              <span className="font-semibold text-valura-ink">Mechanic: </span>
-              <span className="text-valura-ink font-bold">Worst-of at maturity</span>
+              <span className="font-semibold text-text-primary">Mechanic: </span>
+              <span className="text-accent-teal-dark font-bold">Worst-of at maturity</span>
               <span className="text-text-secondary ml-2">
                 (based on final vs reference)
               </span>

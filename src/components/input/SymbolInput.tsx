@@ -6,10 +6,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSymbolSearch } from '../../hooks/useSymbolSearch';
 import { Search, X } from 'lucide-react';
+import { getLogoWithFallback } from '../../utils/logo';
 
 interface SymbolInputProps {
   value: string;
-  nameValue?: string;
   onChange: (symbol: string, name?: string) => void;
   placeholder?: string;
   label?: string;
@@ -19,7 +19,6 @@ interface SymbolInputProps {
 
 export function SymbolInput({
   value,
-  nameValue,
   onChange,
   placeholder = 'Search symbol...',
   label,
@@ -80,7 +79,7 @@ export function SymbolInput({
   };
 
   return (
-    <div className="relative" ref={wrapperRef}>
+    <div className="relative mb-4" ref={wrapperRef}>
       {label && (
         <label className="label">{label}</label>
       )}
@@ -90,7 +89,7 @@ export function SymbolInput({
         </div>
         <input
           type="text"
-          className="input-field pl-10 pr-10"
+          className="input-field pl-10 pr-12 bg-white border-2 border-border rounded-xl shadow-soft focus:border-primary-blue focus:ring-2 focus:ring-primary-blue/30"
           value={value}
           onChange={handleInputChange}
           onFocus={handleFocus}
@@ -115,7 +114,7 @@ export function SymbolInput({
 
       {/* Autocomplete dropdown */}
       {isOpen && (loading || results.length > 0) && (
-        <div className="absolute z-50 w-full mt-1 bg-surface border border-border rounded-lg shadow-strong max-h-60 overflow-auto">
+        <div className="absolute z-50 w-full mt-2 bg-white border border-border rounded-xl shadow-strong max-h-64 overflow-auto">
           {loading && (
             <div className="p-3 text-center text-muted text-sm">Searching...</div>
           )}
@@ -127,13 +126,36 @@ export function SymbolInput({
               key={index}
               type="button"
               onClick={() => handleSelect(result)}
-              className="w-full text-left px-4 py-3 hover:bg-valura-mint-100/30 transition-colors border-b border-border last:border-b-0"
+              className="w-full text-left px-4 py-3 hover:bg-primary-blue-bg/60 transition-colors border-b border-border last:border-b-0 flex items-center space-x-3"
             >
-              <div className="font-semibold text-valura-ink">{result.symbol}</div>
-              <div className="text-sm text-muted">{result.name}</div>
-              {result.exchangeShortName && (
-                <div className="text-xs text-muted mt-1">{result.exchangeShortName}</div>
-              )}
+              {(() => {
+                const { logoUrl, fallback } = getLogoWithFallback(result.symbol, result.name);
+                return (
+                  <div className="relative w-10 h-10 rounded-lg bg-surface-2 border border-border flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <img
+                      src={logoUrl}
+                      alt={result.symbol}
+                      className="w-full h-full object-contain p-1"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const fallbackEl = target.parentElement?.querySelector('.logo-fallback') as HTMLElement | null;
+                        if (fallbackEl) fallbackEl.style.display = 'flex';
+                      }}
+                    />
+                    <span className="logo-fallback hidden absolute inset-0 items-center justify-center text-sm font-bold text-primary-blue">
+                      {fallback}
+                    </span>
+                  </div>
+                );
+              })()}
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-text-primary">{result.symbol}</div>
+                <div className="text-sm text-text-secondary truncate">{result.name}</div>
+                {result.exchangeShortName && (
+                  <div className="text-xs text-text-secondary mt-1">{result.exchangeShortName}</div>
+                )}
+              </div>
             </button>
           ))}
         </div>

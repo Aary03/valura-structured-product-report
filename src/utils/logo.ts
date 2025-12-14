@@ -8,6 +8,7 @@
  * Uses multiple fallback services
  */
 export function getCompanyLogoUrl(symbol: string, companyName?: string): string {
+  void companyName; // reserved for future domain-based logo fallbacks
   // Financial Modeling Prep logo service
   // Format: https://financialmodelingprep.com/image-stock/{symbol}.png
   return `https://financialmodelingprep.com/image-stock/${symbol}.png`;

@@ -147,7 +147,7 @@ export function useReportGenerator(): UseReportGeneratorResult {
       const documentId = generateDocumentId();
       const generatedDate = new Date().toISOString().split('T')[0];
 
-      setReportData({
+      const nextReport: ReportData = {
         terms: currentTerms,
         underlyingData,
         historicalData,
@@ -161,7 +161,15 @@ export function useReportGenerator(): UseReportGeneratorResult {
         documentId,
         generatedDate,
         ...additionalData,
-      });
+      };
+
+      setReportData(nextReport);
+      // Persist for PDF route/server-side generation
+      try {
+        sessionStorage.setItem('valura:lastReport', JSON.stringify(nextReport));
+      } catch {
+        // ignore storage errors
+      }
       setLoading(false);
     }
   }, [currentTerms, underlyingData, payoffResult, dataLoading, historicalData, curvePoints, intrinsicValue, barrierLevel, strikeLevel, additionalData, reportData]);

@@ -46,38 +46,40 @@ export function ProductSummaryCard({
 }: ProductSummaryCardProps) {
   const colorClasses = {
     blue: {
-      text: 'text-valura-ink',
-      bg: 'bg-valura-mint-100',
-      border: 'border-border',
+      text: 'text-primary-blue',
+      bg: 'bg-primary-blue-bg',
+      border: 'border-primary-blue',
     },
     purple: {
-      text: 'text-valura-ink',
-      bg: 'bg-valura-mint-100',
-      border: 'border-border',
+      text: 'text-accent-purple-dark',
+      bg: 'bg-accent-purple-bg',
+      border: 'border-accent-purple',
     },
     orange: {
-      text: 'text-valura-ink',
-      bg: 'bg-warning-bg',
-      border: 'border-border',
+      text: 'text-accent-coral-dark',
+      bg: 'bg-accent-coral-bg',
+      border: 'border-accent-coral',
     },
   };
 
   const pillColors = {
-    pink: 'bg-warning-bg text-warning-fg border-border',
-    orange: 'bg-warning-bg text-warning-fg border-border',
-    teal: 'bg-valura-mint-100 text-valura-ink border-border',
-    blue: 'bg-valura-mint-100 text-valura-ink border-border',
-    purple: 'bg-valura-mint-100 text-valura-ink border-border',
+    pink: 'bg-accent-coral-bg text-accent-coral-dark border-accent-coral',
+    orange: 'bg-accent-coral-bg text-accent-coral-dark border-accent-coral',
+    teal: 'bg-accent-teal-bg text-accent-teal-dark border-accent-teal',
+    blue: 'bg-primary-blue-bg text-primary-blue border-primary-blue',
+    purple: 'bg-accent-purple-bg text-accent-purple-dark border-accent-purple',
   };
 
   const productColorClass = colorClasses[productColor];
 
   return (
     <div 
-      className="bg-surface border border-border p-6 transition-all duration-200 hover:shadow-card hover:-translate-y-0.5"
+      className="bg-surface border p-6 transition-all duration-300 hover:shadow-strong hover:-translate-y-1"
       style={{
         borderRadius: 'var(--radius-xl)',
         boxShadow: 'var(--shadow-card)',
+        borderColor: 'var(--border-light)',
+        borderWidth: '1px',
       }}
     >
       {/* Header */}

@@ -245,7 +245,6 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
                   <div className="flex-1">
                     <SymbolInput
                       value={underlying.symbol}
-                      nameValue={underlying.name}
                       onChange={(symbol, name) => handleUnderlyingChange(index, symbol, name)}
                       label={`Underlying ${index + 1}${basketType === 'worst_of' ? ' (Worst-Of)' : ''}`}
                       placeholder="Search symbol (e.g., AAPL)"
@@ -454,7 +453,10 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
           <div className="flex justify-end pt-6 border-t border-border">
             <button
               type="submit"
-              className="btn-primary min-w-[200px]"
+              className="btn-primary min-w-[220px] py-3.5 text-base font-semibold"
+              style={{
+                boxShadow: 'var(--shadow-button)',
+              }}
               disabled={loading}
             >
               {loading ? 'Generating...' : 'Generate Report'}
