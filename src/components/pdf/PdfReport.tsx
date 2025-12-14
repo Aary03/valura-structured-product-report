@@ -41,14 +41,13 @@ export function PdfReport() {
     setReportData(readLastReport());
   }, []);
 
-  // Fetch richer spotlight summaries for PDF cards (so they match the app cards)
+  // Fetch richer spotlight summaries for PDF cards
   useEffect(() => {
     if (!reportData) return;
     let cancelled = false;
     setSpotlightsReady(false);
 
     const timer = window.setTimeout(() => {
-      // Never block PDF forever — allow export even if a data call is slow.
       if (!cancelled) setSpotlightsReady(true);
     }, 9000);
 
@@ -87,7 +86,6 @@ export function PdfReport() {
     };
   }, [reportData]);
 
-  // Mark ready for Playwright once rendered (double RAF for charts layout)
   useEffect(() => {
     if (!reportData) return;
     if (!spotlightsReady) {
@@ -108,9 +106,7 @@ export function PdfReport() {
       .map((p) => (p.normalized ?? p.price ?? p.close ?? p.adjClose) as number)
       .filter((v) => typeof v === 'number' && Number.isFinite(v));
     if (values.length < 2) return null;
-    // Ensure oldest -> newest
     const series = raw[0]?.date && raw[1]?.date && String(raw[0].date) > String(raw[1].date) ? [...values].reverse() : values;
-    // Downsample to ~48 points
     const target = 48;
     const step = Math.max(1, Math.floor(series.length / target));
     const sampled = series.filter((_v, i) => i % step === 0);
@@ -148,7 +144,6 @@ export function PdfReport() {
       const lookback = '1Y';
       const retPct = (() => {
         const series = reportData.historicalData?.[i] || [];
-        // naive: use first point in series as start
         const start = series?.[0]?.close;
         if (!start || !u.currentPrice) return null;
         return ((u.currentPrice / start) - 1) * 100;
@@ -164,7 +159,7 @@ export function PdfReport() {
       };
     });
 
-    const scenarios = [120, 100, 80, 70, 50]; // compact
+    const scenarios = [120, 100, 80, 70, 50];
     const scenarioRows = scenarios.map((finalLevel) => calculateEndingValue(terms, finalLevel, terms.notional));
 
     return {
@@ -182,7 +177,7 @@ export function PdfReport() {
     return (
       <div className="pdf-root">
         <div className="pdf-page">
-          <div className="pdf-card">
+          <div className="pdf-card" style={{ width: '100%' }}>
             <div className="pdf-section-title">PDF layout</div>
             <div className="pdf-muted pdf-mini">
               No report data found. Generate a report first, then export PDF.
@@ -211,20 +206,48 @@ export function PdfReport() {
 
   return (
     <div className="pdf-root" data-pdf-ready={String(!!window.__PDF_READY__)}>
+      <style>{`
+        .pdf-card, .pdf-underlying-card {
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+          border: 1px solid #e5e7eb;
+          page-break-inside: avoid; /* Essential */
+        }
+        .pdf-card--inner {
+          box-shadow: none !important;
+        }
+        .pdf-main-header {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          margin-bottom: 12px; /* Reduced from 20px */
+        }
+        .pdf-main-logo {
+          height: 32px;
+          margin-bottom: 6px;
+        }
+        .pdf-main-title {
+          font-size: 24px;
+          font-weight: 700;
+          color: #111827;
+          line-height: 1.2;
+        }
+      `}</style>
+
       {/* PAGE 1 */}
-      <div className="pdf-page">
+      <div className="pdf-page" style={{ overflow: 'hidden' }}>
         <div className="pdf-sheet">
-          <div className="pdf-topbar avoid-break" />
-          <div style={{ height: 8 }} />
+          <div className="pdf-topbar avoid-break" style={{ width: '100%' }} />
+          <div style={{ height: 12 }} /> 
 
-          {/* Product details card (reference-style) */}
-          <div className="pdf-card pdf-product-card avoid-break">
-            <div className="pdf-brand">
-              <img src={valuraLogo} alt="Valura.ai" className="pdf-brand-img" />
-              <span className="pdf-sub">Structured Product Report</span>
-            </div>
+          {/* Branding Header */}
+          <div className="pdf-main-header avoid-break">
+            <img src={valuraLogo} alt="Valura.ai" className="pdf-main-logo" />
+            <div className="pdf-main-title">Structured Product Report</div>
+          </div>
 
-            <div style={{ marginTop: 6 }}>
+          {/* Product details card */}
+          <div className="pdf-card pdf-product-card avoid-break" style={{ width: '100%', marginBottom: 6 }}>
+            <div>
               <div className="pdf-product-title">Reverse Convertible</div>
               <div className="pdf-product-rate">{couponRateText} p.a.</div>
             </div>
@@ -291,10 +314,10 @@ export function PdfReport() {
             </div>
           </div>
 
-          <div style={{ height: 10 }} />
+          <div style={{ height: 6 }} />
 
-          {/* Payoff FIRST on page 1 */}
-          <div className="avoid-break">
+          {/* Payoff Graph - constrained height */}
+          <div className="avoid-break" style={{ width: '100%', maxHeight: '220px', overflow: 'hidden' }}>
             <PayoffGraph
               curvePoints={curvePoints}
               barrierLevel={barrierLevel}
@@ -307,10 +330,10 @@ export function PdfReport() {
             />
           </div>
 
-          <div style={{ height: 10 }} />
+          <div style={{ height: 6 }} />
 
           {/* Underlyings table */}
-          <div className="pdf-card avoid-break">
+          <div className="pdf-card avoid-break" style={{ width: '100%' }}>
             <div className="pdf-section-title">More about the underlyings</div>
             <table className="pdf-table">
               <thead>
@@ -354,10 +377,10 @@ export function PdfReport() {
             </table>
           </div>
 
-          <div style={{ height: 10 }} />
+          <div style={{ height: 6 }} />
 
-          {/* Good fit + Break-even (remove Not a fit) */}
-          <div className="pdf-grid-2-eq">
+          {/* Good fit + Break-even */}
+          <div className="pdf-grid-2-eq" style={{ width: '100%' }}>
             <div className="pdf-card avoid-break" style={{ borderColor: 'rgba(16,185,129,0.35)', background: 'rgba(16,185,129,0.06)' }}>
               <div className="pdf-section-title" style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>Good fit if…</span>
@@ -373,10 +396,10 @@ export function PdfReport() {
               <div className="pdf-section-title" style={{ marginBottom: 4 }}>Break-even (including coupons)</div>
               <div className="pdf-mini pdf-muted">
                 Break-even worst-of final level: <b style={{ color: 'var(--pdf-ink)' }}>{formatPercent(breakEvenPct / 100, 0)}</b>
-                <div style={{ marginTop: 6 }}>
+                <div style={{ marginTop: 2 }}>
                   Total coupons: <b style={{ color: 'var(--pdf-ink)' }}>{formatPercent(totalCouponsPct, 1)}</b>
                 </div>
-                <div style={{ marginTop: 6 }}>
+                <div style={{ marginTop: 2 }}>
                   Rule: total return ≈ 0 when ending value + coupons equals your initial notional.
                 </div>
               </div>
@@ -384,7 +407,7 @@ export function PdfReport() {
           </div>
 
           {/* Footer */}
-          <div className="pdf-footer">
+          <div className="pdf-footer" style={{ width: '100%' }}>
             <div className="pdf-footer-band">
               <span><b>Document ID:</b> {reportData.documentId}</span>
               <span className="pdf-muted"><b>Generated:</b> {reportData.generatedDate}</span>
@@ -395,13 +418,14 @@ export function PdfReport() {
       </div>
 
       {/* PAGE 2 */}
-      <div className="pdf-page">
+      <div className="pdf-page" style={{ overflow: 'hidden' }}>
         <div className="pdf-sheet">
-          <div className="pdf-topbar avoid-break" />
-          <div style={{ height: 10 }} />
+          <div className="pdf-topbar avoid-break" style={{ width: '100%' }} />
+          <div style={{ height: 12 }} />
 
-          <div className="pdf-grid-2">
-            <div className="avoid-break">
+          <div className="pdf-grid-2" style={{ width: '100%', alignItems: 'start' }}>
+            {/* Constrain graph height */}
+            <div className="avoid-break" style={{ width: '100%', maxHeight: '200px' }}>
               <PerformanceGraph
                 historicalData={historicalData}
                 underlyingSymbols={underlyingData.map((u) => u.symbol)}
@@ -413,9 +437,9 @@ export function PdfReport() {
                 pdfMode
               />
             </div>
-            <div className="pdf-card avoid-break">
+            <div className="pdf-card avoid-break" style={{ width: '100%' }}>
               <div className="pdf-section-title">Outcome examples (compact)</div>
-              <table className="pdf-table">
+              <table className="pdf-table" style={{ fontSize: '0.65rem' }}>
                 <thead>
                   <tr>
                     <th>Final level</th>
@@ -442,10 +466,10 @@ export function PdfReport() {
                 </tbody>
               </table>
 
-              <div style={{ height: 8 }} />
+              <div style={{ height: 4 }} />
 
-              <div className="pdf-card pdf-card--inner avoid-break" style={{ padding: 10, borderColor: 'rgba(79,70,229,0.22)', background: 'rgba(79,70,229,0.06)' }}>
-                <div className="pdf-section-title" style={{ marginBottom: 4 }}>Key note</div>
+              <div className="pdf-card pdf-card--inner avoid-break" style={{ padding: 8, borderColor: 'rgba(79,70,229,0.22)', background: 'rgba(79,70,229,0.06)' }}>
+                <div className="pdf-section-title" style={{ marginBottom: 2 }}>Key note</div>
                 <div className="pdf-mini pdf-muted">
                   Illustrative outcomes. Assumes coupons paid as scheduled and no issuer default.
                 </div>
@@ -453,12 +477,22 @@ export function PdfReport() {
             </div>
           </div>
 
-          <div style={{ height: 8 }} />
+          <div style={{ height: 6 }} />
 
           {/* Underlying spotlights (page 2) */}
-          <div className="pdf-card avoid-break">
+          <div className="pdf-card avoid-break" style={{ width: '100%' }}>
             <div className="pdf-section-title">Underlying spotlights</div>
-            <div className='pdf-spotlight-grid pdf-spotlight-grid-1'>
+            
+            {/* FORCE 2 COLUMNS explicitly to save vertical space */}
+            <div 
+              className='pdf-spotlight-grid pdf-spotlight-grid-1' 
+              style={{ 
+                width: '100%',
+                display: 'grid',
+                gridTemplateColumns: '1fr',
+                gap: '10px'
+              }}
+            >
               {(spotlightSummaries.length > 0 ? spotlightSummaries : []).map((s, idx) => {
                 const spark = sparklineForIndex(idx);
                 const u = underlyingData[idx];
@@ -486,7 +520,6 @@ export function PdfReport() {
                               img.style.display = 'none';
                             }}
                           />
-                          <span className="pdf-logo-fallback">{s.symbol.slice(0, 2)}</span>
                         </div>
                         <div style={{ minWidth: 0 }}>
                           <div className="pdf-underlying-symbol">{s.symbol}</div>
@@ -494,11 +527,10 @@ export function PdfReport() {
                         </div>
                       </div>
                       <div className="pdf-spotlight-badges">
-                        {s.analystConsensus && <span className="pdf-pill">{s.analystConsensus}</span>}
                         {s.riskBadge && <span className={`pdf-pill ${s.riskBadge === 'Low' ? 'good' : s.riskBadge === 'High' ? 'bad' : ''}`}>Risk: {s.riskBadge}</span>}
-                        <span className={`pdf-pill ${perfTone}`}>
+                        {/* <span className={`pdf-pill ${perfTone}`}>
                           {s.performancePct >= 0 ? '▲' : '▼'} {formatNumber(Math.abs(s.performancePct), 1)}%
-                        </span>
+                        </span> */}
                       </div>
                     </div>
 
@@ -509,23 +541,16 @@ export function PdfReport() {
                           <div className="v">${formatNumber(s.spotPrice, 2)}</div>
                         </div>
                         <div className="m">
-                          <div className="k">{computed.triggerLabel} price</div>
+                          <div className="k">{computed.triggerLabel}</div>
                           <div className="v">${formatNumber(triggerPrice, 2)}</div>
                         </div>
                         <div className="m">
                           <div className="k">Ref</div>
                           <div className="v">${formatNumber(ref, 2)}</div>
                         </div>
-                        <div className="m">
-                          <div className="k">Sector</div>
-                          <div className="v">{s.sector || '—'}</div>
-                          <div className="pdf-mini pdf-muted" style={{ marginTop: 2 }}>
-                            {s.industry || ''}
-                          </div>
-                        </div>
                       </div>
                       <div className="pdf-sparkline-wrap">
-                        <div className="k">Price history (normalized)</div>
+                        <div className="k">Price (norm)</div>
                         <div className="pdf-sparkline">
                           {spark ? (
                             <svg viewBox={`0 0 ${spark.w} ${spark.h}`} width={spark.w} height={spark.h} aria-label="Price sparkline">
@@ -549,47 +574,42 @@ export function PdfReport() {
                             <div className="pdf-mini pdf-muted">—</div>
                           )}
                         </div>
-                        <div className="pdf-mini pdf-muted" style={{ marginTop: 4 }}>
-                          Latest: <b style={{ color: 'var(--pdf-ink)' }}>{spark ? `${formatNumber(spark.last, 0)}%` : '—'}</b>
-                        </div>
                       </div>
                     </div>
-
-                    {/* footer intentionally minimal */}
                   </div>
                 );
               })}
             </div>
           </div>
 
-          <div style={{ height: 8 }} />
+          <div style={{ height: 6 }} />
 
-          {/* Understand the scenarios (page 2 as well) */}
-          <div className="pdf-card avoid-break">
+          {/* Understand the scenarios */}
+          <div className="pdf-card avoid-break" style={{ width: '100%' }}>
             <div className="pdf-section-title">Understand the scenarios</div>
-            <div className="pdf-grid-2-eq">
-              <div className="pdf-card pdf-card--inner" style={{ padding: 10, borderColor: 'rgba(16,185,129,0.35)', background: 'rgba(16,185,129,0.06)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <b style={{ color: 'var(--pdf-ink)' }}>If final level ≥ {formatPercent(computed.triggerPct, 0)}</b>
+            <div className="pdf-grid-2-eq" style={{ width: '100%' }}>
+              <div className="pdf-card pdf-card--inner" style={{ padding: 8, borderColor: 'rgba(16,185,129,0.35)', background: 'rgba(16,185,129,0.06)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <b style={{ color: 'var(--pdf-ink)' }}>If final ≥ {formatPercent(computed.triggerPct, 0)}</b>
                   <span className="pdf-pill good">YES</span>
                 </div>
                 <div className="pdf-mini pdf-muted">
                   <div>• Cash redemption: 100% notional</div>
                   <div>• Coupons paid as scheduled</div>
-                  <div style={{ marginTop: 6, color: 'var(--pdf-faint)' }}>
+                  <div style={{ marginTop: 4, color: 'var(--pdf-faint)' }}>
                     Payoff ≈ 100% (+ coupons)
                   </div>
                 </div>
               </div>
-              <div className="pdf-card pdf-card--inner" style={{ padding: 10, borderColor: 'rgba(239,68,68,0.30)', background: 'rgba(239,68,68,0.05)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <b style={{ color: 'var(--pdf-ink)' }}>If final level &lt; {formatPercent(computed.triggerPct, 0)}</b>
+              <div className="pdf-card pdf-card--inner" style={{ padding: 8, borderColor: 'rgba(239,68,68,0.30)', background: 'rgba(239,68,68,0.05)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <b style={{ color: 'var(--pdf-ink)' }}>If final &lt; {formatPercent(computed.triggerPct, 0)}</b>
                   <span className="pdf-pill bad">NO</span>
                 </div>
                 <div className="pdf-mini pdf-muted">
                   <div>• Share conversion (physical settlement)</div>
                   <div>• Ending value follows the stock level</div>
-                  <div style={{ marginTop: 6, color: 'var(--pdf-faint)' }}>
+                  <div style={{ marginTop: 4, color: 'var(--pdf-faint)' }}>
                     Shares ≈ Notional / Reference price
                   </div>
                 </div>
@@ -597,22 +617,22 @@ export function PdfReport() {
             </div>
           </div>
 
-          <div style={{ height: 8 }} />
+          <div style={{ height: 6 }} />
 
-          <div className="pdf-card avoid-break">
+          <div className="pdf-card avoid-break" style={{ width: '100%' }}>
             <div className="pdf-section-title">Risks (short)</div>
             <div className="pdf-mini pdf-muted">
               <div>• Capital at risk: share delivery can be worth less than your initial investment.</div>
               <div>• Issuer credit risk: default can lead to loss of principal and coupons.</div>
               <div>• Early sale may be at a discount; these are designed to be held to maturity.</div>
             </div>
-          <div style={{ marginTop: 8, fontSize: 9.5, color: 'var(--pdf-faint)' }}>
+            <div style={{ marginTop: 6, fontSize: 9.5, color: 'var(--pdf-faint)' }}>
               Indicative terms • Not an offer • For information only
             </div>
           </div>
 
           {/* Footer */}
-          <div className="pdf-footer">
+          <div className="pdf-footer" style={{ width: '100%' }}>
             <div className="pdf-footer-band">
               <span><b>Document ID:</b> {reportData.documentId}</span>
               <span className="pdf-muted"><b>Generated:</b> {reportData.generatedDate}</span>
@@ -624,5 +644,3 @@ export function PdfReport() {
     </div>
   );
 }
-
-
