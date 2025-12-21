@@ -8,18 +8,32 @@ import { SectionHeader } from '../common/SectionHeader';
 import { CheckCircle, XCircle } from 'lucide-react';
 import { Pill } from '../common/Pill';
 
-export function SuitabilitySection() {
-  const goodFitCriteria = [
-    'You want income and can accept capped upside',
-    'You\'re neutral to moderately bullish on these stocks',
-    'You can hold to maturity',
-  ];
+export function SuitabilitySection({ productType = 'RC' }: { productType?: 'RC' | 'CPPN' }) {
+  const goodFitCriteria =
+    productType === 'RC'
+      ? [
+          'You want income and can accept capped upside',
+          "You're neutral to moderately bullish on these stocks",
+          'You can hold to maturity',
+        ]
+      : [
+          'You want a protected floor and upside/downside participation',
+          "You're mildly directional (upside or downside view) and prefer defined terms",
+          'You can hold to maturity (secondary liquidity may be limited)',
+        ];
 
-  const notFitCriteria = [
-    'You need capital protection',
-    'You cannot accept share delivery risk',
-    'You might need to sell early (liquidity/price risk)',
-  ];
+  const notFitCriteria =
+    productType === 'RC'
+      ? [
+          'You need capital protection',
+          'You cannot accept share delivery risk',
+          'You might need to sell early (liquidity/price risk)',
+        ]
+      : [
+          'You want full, uncapped equity participation',
+          'You are uncomfortable with issuer credit risk',
+          'You need high liquidity or might sell early',
+        ];
 
   return (
     <CardShell className="p-6">

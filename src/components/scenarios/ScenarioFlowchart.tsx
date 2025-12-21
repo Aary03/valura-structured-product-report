@@ -183,3 +183,10 @@ function OutcomeBox({ outcome, tone }: OutcomeBoxProps) {
   );
 }
 
+
+
+
+
+
+
+

@@ -146,3 +146,10 @@ export function calculateLookbackRange(
   return { high, low, range: high - low };
 }
 
+
+
+
+
+
+
+

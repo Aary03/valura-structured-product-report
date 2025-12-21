@@ -15,6 +15,7 @@ interface UnderlyingCardProps {
 }
 
 export function UnderlyingCard({ summary, isWorstOf = false }: UnderlyingCardProps) {
+  void isWorstOf;
   const { logoUrl, fallback } = getLogoWithFallback(summary.symbol, summary.name);
   const earningsDateText = summary.nextEarningsDate
     ? new Date(summary.nextEarningsDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -22,6 +23,7 @@ export function UnderlyingCard({ summary, isWorstOf = false }: UnderlyingCardPro
   
   const performanceColor = summary.performancePct >= 0 ? 'text-success' : 'text-danger';
   const distanceColor = summary.distanceToBarrierPctPts >= 0 ? 'text-success' : 'text-danger';
+  const thresholdLabel = summary.thresholdLabel || 'Barrier';
   
   const momentumIcon = summary.momentumBadge === 'Uptrend' 
     ? <TrendingUp className="w-4 h-4" />
@@ -121,9 +123,9 @@ export function UnderlyingCard({ summary, isWorstOf = false }: UnderlyingCardPro
           </div>
         </div>
 
-        {/* Distance to Barrier */}
+        {/* Distance to Threshold */}
         <div>
-          <div className="text-xs text-text-secondary mb-1">Distance to Barrier</div>
+          <div className="text-xs text-text-secondary mb-1">Distance to {thresholdLabel}</div>
           <div className={`text-lg font-semibold ${distanceColor} flex items-center space-x-1`}>
             {summary.distanceToBarrierPctPts >= 0 ? (
               <CheckCircle className="w-4 h-4" />

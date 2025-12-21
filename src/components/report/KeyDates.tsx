@@ -5,7 +5,7 @@
 
 import type { ISODateString } from '../../core/types/dates';
 import { formatDate } from '../../core/types/dates';
-import { Calendar, Clock } from 'lucide-react';
+import { Calendar, Clock, MinusCircle } from 'lucide-react';
 
 interface KeyDatesProps {
   pricingDate: ISODateString;
@@ -36,7 +36,7 @@ export function KeyDates({ pricingDate, couponSchedule, maturityDate }: KeyDates
         </div>
 
         {/* Coupon Dates */}
-        {nextCoupons.map((date, index) => (
+        {nextCoupons.length > 0 ? nextCoupons.map((date, index) => (
           <div 
             key={date} 
             className="flex items-center space-x-2 px-5 py-2.5 rounded-full border hover:shadow-medium transition-all"
@@ -51,7 +51,21 @@ export function KeyDates({ pricingDate, couponSchedule, maturityDate }: KeyDates
               Coupon {index + 1}: {formatDate(date, 'short')}
             </span>
           </div>
-        ))}
+        )) : (
+          <div
+            className="flex items-center space-x-2 px-5 py-2.5 rounded-full border"
+            style={{
+              backgroundColor: 'var(--surface-2)',
+              borderColor: 'var(--border)',
+              boxShadow: 'var(--shadow-soft)',
+            }}
+          >
+            <MinusCircle className="w-4 h-4 text-text-secondary" />
+            <span className="text-sm font-semibold text-text-secondary">
+              No coupons
+            </span>
+          </div>
+        )}
 
         {/* Maturity Date */}
         <div 

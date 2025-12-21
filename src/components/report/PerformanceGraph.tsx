@@ -21,7 +21,6 @@ import { formatDate } from '../../core/types/dates';
 import { CardShell } from '../common/CardShell';
 import { SectionHeader } from '../common/SectionHeader';
 import { TrendingUp, TrendingDown, BarChart3 } from 'lucide-react';
-import { formatPercent } from '../../core/utils/math';
 
 interface PerformanceGraphProps {
   historicalData: HistoricalPricePoint[][];
@@ -47,6 +46,7 @@ export function PerformanceGraph({
   worstUnderlyingIndex = null,
   pdfMode = false,
 }: PerformanceGraphProps) {
+  void initialFixings;
   if (historicalData.length === 0) {
     return (
       <CardShell className="p-6">
@@ -95,8 +95,10 @@ export function PerformanceGraph({
   const maxValue = Math.max(...values);
   const minValue = Math.min(...values);
   const range = maxValue - minValue;
+  void range;
   const lastValue = values[values.length - 1] || 100;
   const firstValue = values[0] || 100;
+  void firstValue;
   const drawdown = ((lastValue - maxValue) / maxValue) * 100;
   
   // Calculate worst-of current level if basket
@@ -128,6 +130,7 @@ export function PerformanceGraph({
   const EndLabel = ({ symbol, value, color }: { symbol: string; value: number; color: string }) => {
     if (!chartData.length) return null;
     const lastPoint = chartData[chartData.length - 1];
+    void lastPoint;
     return (
       <Label
         value={`${symbol} ${value.toFixed(0)}%`}
@@ -171,6 +174,10 @@ export function PerformanceGraph({
 
   const barrierY = barrierLevel * 100;
   const strikeY = strikeLevel ? strikeLevel * 100 : null;
+  const showBarrierLine =
+    Number.isFinite(barrierLevel) &&
+    barrierLevel > 0 &&
+    Math.abs(barrierY - 100) > 0.5;
 
   const formatMonthYear = (value: string) => {
     // Keep labels short for PDF to avoid overlaps: "Dec 24"
@@ -251,19 +258,21 @@ export function PerformanceGraph({
             }}
           />
           
-          {/* Barrier reference line */}
-          <ReferenceLine
-            y={barrierY}
-            stroke="var(--chart-barrier)"
-            strokeDasharray="8 4"
-            strokeWidth={2}
-            label={pdfMode ? undefined : {
-              value: `Barrier ${barrierY.toFixed(0)}%`,
-              position: 'right',
-              fill: 'var(--text-secondary)',
-              fontSize: 11,
-            }}
-          />
+          {/* Barrier reference line (hide when not meaningful, e.g., CPPN) */}
+          {showBarrierLine && (
+            <ReferenceLine
+              y={barrierY}
+              stroke="var(--chart-barrier)"
+              strokeDasharray="8 4"
+              strokeWidth={2}
+              label={pdfMode ? undefined : {
+                value: `Barrier ${barrierY.toFixed(0)}%`,
+                position: 'right',
+                fill: 'var(--text-secondary)',
+                fontSize: 11,
+              }}
+            />
+          )}
           
           {/* Strike reference line (if applicable) */}
           {strikeY && (
@@ -286,6 +295,7 @@ export function PerformanceGraph({
             const lastValue = chartData.length > 0 
               ? chartData[chartData.length - 1][symbol] 
               : 100;
+            void lastValue;
             const isWorst = worstUnderlyingIndex !== null && index === worstUnderlyingIndex;
             return (
               <Area
@@ -322,6 +332,7 @@ export function PerformanceGraph({
             const lastValue = chartData.length > 0 
               ? chartData[chartData.length - 1][symbol] 
               : 100;
+            void lastValue;
             return (
               <Line
                 key={`label-${symbol}`}

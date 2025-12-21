@@ -17,7 +17,7 @@ export interface Underlying {
 /**
  * Basket type for multi-underlying products
  */
-export type BasketType = 'single' | 'worst_of' | 'best_of';
+export type BasketType = 'single' | 'worst_of' | 'best_of' | 'average';
 
 /**
  * Settlement type

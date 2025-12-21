@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'react';
 import type { UnderlyingData } from '../../services/api/mappers';
 import type { HistoricalPricePoint } from '../../services/api/mappers';
-import type { ReverseConvertibleTerms } from '../../products/reverseConvertible/terms';
+import type { ProductTerms } from '../../hooks/useReportGenerator';
 import { buildUnderlyingSummary, type UnderlyingSummary } from '../../services/underlyingSummary';
 import { UnderlyingCard } from './UnderlyingCard';
 import { SectionHeader } from '../common/SectionHeader';
@@ -16,7 +16,7 @@ import { CardShell } from '../common/CardShell';
 interface UnderlyingsSpotlightProps {
   underlyingData: UnderlyingData[];
   historicalData: HistoricalPricePoint[][];
-  terms: ReverseConvertibleTerms;
+  terms: ProductTerms;
   worstUnderlyingIndex: number | null;
   pdfMode?: boolean;
 }
@@ -43,7 +43,14 @@ export function UnderlyingsSpotlight({
       setError(null);
 
       try {
-        const barrierPct = terms.barrierPct || terms.strikePct || 0.7;
+        const thresholdPct =
+          terms.productType === 'RC'
+            ? (terms.barrierPct || terms.strikePct || 0.7)
+            : (terms.participationStartPct / 100);
+        const thresholdLabel =
+          terms.productType === 'RC'
+            ? 'Barrier'
+            : 'Participation Start';
         
         const summaryPromises = underlyingData.map(async (data, index) => {
           const initialFixing = data.initialFixing || data.currentPrice;
@@ -53,8 +60,9 @@ export function UnderlyingsSpotlight({
             return await buildUnderlyingSummary(
               data.symbol,
               initialFixing,
-              barrierPct,
-              historical
+              thresholdPct,
+              historical,
+              { thresholdLabel }
             );
           } catch (err) {
             console.error(`Error building summary for ${data.symbol}:`, err);
@@ -66,7 +74,8 @@ export function UnderlyingsSpotlight({
               spotPrice: data.currentPrice,
               initialFixing,
               performancePct: ((data.currentPrice / initialFixing) - 1) * 100,
-              distanceToBarrierPctPts: ((data.currentPrice / initialFixing) - barrierPct) * 100,
+              distanceToBarrierPctPts: ((data.currentPrice / initialFixing) - thresholdPct) * 100,
+              thresholdLabel,
               insight: 'Data loading in progress...',
             } as UnderlyingSummary;
           }

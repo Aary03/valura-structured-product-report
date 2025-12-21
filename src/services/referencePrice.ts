@@ -67,3 +67,10 @@ export function calculateDistanceToBarrier(
   return ((spotPrice / barrierPrice) - 1) * 100;
 }
 
+
+
+
+
+
+
+

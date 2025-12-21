@@ -9,7 +9,7 @@ import type { UnderlyingData, HistoricalPricePoint } from '../../services/api/ma
 import { formatNumber, formatPercent } from '../../core/utils/math';
 import { getLogoWithFallback } from '../../utils/logo';
 import { calculateLookbackReturn, type LookbackPeriod } from '../../services/lookbackReturns';
-import type { ReverseConvertibleTerms } from '../../products/reverseConvertible/terms';
+import type { ProductTerms } from '../../hooks/useReportGenerator';
 import { Info } from 'lucide-react';
 import { CardShell } from '../common/CardShell';
 
@@ -17,7 +17,7 @@ interface UnderlyingsTableProps {
   underlyingData: UnderlyingData[];
   historicalData: HistoricalPricePoint[][]; // Historical data per underlying
   initialFixings?: Record<string, number>;
-  terms: ReverseConvertibleTerms;
+  terms: ProductTerms;
   referencePrices?: number[]; // Reference prices per underlying (defaults to current spot)
   loading?: boolean;
   worstUnderlyingIndex?: number | null;
@@ -69,23 +69,37 @@ export function UnderlyingsTable({
     const hist = historicalData[index] || [];
     const lookbackReturn = calculateLookbackReturn(data.currentPrice, hist, lookbackPeriod);
     const referencePrice = refPrices[index] || data.currentPrice;
-    
-    // Calculate knock-in price
-    // For low-strike: use knockInBarrierPct ?? strikePct
-    // For standard barrier: use barrierPct
-    let knockInPct: number;
-    if (terms.variant === 'low_strike_geared_put') {
-      knockInPct = terms.knockInBarrierPct ?? terms.strikePct ?? 0;
+
+    // Calculate trigger price for the table:
+    // - RC: "knock-in" style trigger (barrier or KI/strike)
+    // - CPPN: participation start price (K), with optional KI shown as subtext
+    let triggerPct: number;
+    if (terms.productType === 'RC') {
+      if (terms.variant === 'low_strike_geared_put') {
+        triggerPct = terms.knockInBarrierPct ?? terms.strikePct ?? 0;
+      } else {
+        triggerPct = terms.barrierPct ?? 0;
+      }
     } else {
-      knockInPct = terms.barrierPct ?? 0;
+      triggerPct = terms.participationStartPct / 100;
     }
-    
-    const knockInPrice = referencePrice * knockInPct;
+
+    const triggerPrice = referencePrice * triggerPct;
+    const knockInPrice =
+      terms.productType === 'CPPN' && terms.knockInEnabled && terms.knockInLevelPct
+        ? referencePrice * (terms.knockInLevelPct / 100)
+        : null;
+    const capPrice =
+      terms.productType === 'CPPN' && terms.capType === 'capped' && terms.capLevelPct
+        ? referencePrice * (terms.capLevelPct / 100)
+        : null;
     
     return {
       lookbackReturn,
       referencePrice,
+      triggerPrice,
       knockInPrice,
+      capPrice,
     };
   };
 
@@ -150,7 +164,7 @@ export function UnderlyingsTable({
                 Return ({lookbackPeriod})
               </th>
               <th className="text-left px-4 py-4 border-b-2 border-border font-semibold text-text-primary text-sm whitespace-nowrap">
-                Knock-in Price
+                {terms.productType === 'RC' ? 'Knock-in Price' : 'Participation Start Price'}
               </th>
               <th className="text-left px-4 py-4 border-b-2 border-border font-semibold text-text-primary text-sm whitespace-nowrap">
                 Analysts Estimates
@@ -215,7 +229,19 @@ export function UnderlyingsTable({
                     )}
                   </td>
                   <td className="px-4 py-4 font-semibold text-text-primary text-sm whitespace-nowrap">
-                    ${formatNumber(metrics.knockInPrice, 2)}
+                    <div className="flex flex-col leading-tight">
+                      <span>${formatNumber(metrics.triggerPrice, 2)}</span>
+                      {terms.productType === 'CPPN' && metrics.knockInPrice != null && (
+                        <span className="text-xs text-text-secondary">
+                          KI: ${formatNumber(metrics.knockInPrice, 2)}
+                        </span>
+                      )}
+                      {terms.productType === 'CPPN' && metrics.capPrice != null && (
+                        <span className="text-xs text-text-secondary">
+                          Cap: ${formatNumber(metrics.capPrice, 2)}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-4 text-text-secondary text-sm whitespace-nowrap">
                     {formatAnalystEstimates(data)}

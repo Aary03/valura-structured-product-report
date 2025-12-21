@@ -11,25 +11,40 @@ interface RiskItem {
   text: string;
 }
 
-const riskItems: RiskItem[] = [
-  {
-    text: 'Capital is at risk if the barrier is breached at maturity. You may receive shares worth less than your initial investment.',
-  },
-  {
-    text: 'You may receive shares instead of cash if the underlying stock (or worst-performing stock in a basket) is below the barrier at maturity.',
-  },
-  {
-    text: 'Issuer credit risk: If the issuer defaults, you may lose some or all of your investment, including unpaid coupons.',
-  },
-  {
-    text: 'Early exit may be at a discount. These products are typically designed to be held to maturity, and selling early may result in losses.',
-  },
-  {
-    text: 'Market risk: The value of shares received at conversion depends on the stock price at maturity, which may be significantly lower than the reference price.',
-  },
-];
+function getRiskItems(productType: 'RC' | 'CPPN', kiEnabled?: boolean): RiskItem[] {
+  if (productType === 'CPPN') {
+    return [
+      { text: 'Issuer credit risk: “capital protection” depends on the issuer’s ability to pay at maturity.' },
+      { text: 'Liquidity risk: secondary market pricing may be below notional before maturity.' },
+      { text: 'Participation may be capped, limiting upside even if the underlying performs strongly.' },
+      ...(kiEnabled
+        ? [{ text: 'Knock-in risk (if enabled): if final level is below KI, payoff switches to a geared-put regime (100×X/S), which can increase downside exposure.' }]
+        : []),
+      { text: 'Model/assumption risk: this is an indicative illustration for education, not an offer.' },
+    ];
+  }
 
-export function Risks() {
+  return [
+    {
+      text: 'Capital is at risk if the barrier is breached at maturity. You may receive shares worth less than your initial investment.',
+    },
+    {
+      text: 'You may receive shares instead of cash if the underlying stock (or worst-performing stock in a basket) is below the barrier at maturity.',
+    },
+    {
+      text: 'Issuer credit risk: If the issuer defaults, you may lose some or all of your investment, including unpaid coupons.',
+    },
+    {
+      text: 'Early exit may be at a discount. These products are typically designed to be held to maturity, and selling early may result in losses.',
+    },
+    {
+      text: 'Market risk: The value of shares received at conversion depends on the stock price at maturity, which may be significantly lower than the reference price.',
+    },
+  ];
+}
+
+export function Risks({ productType = 'RC', kiEnabled }: { productType?: 'RC' | 'CPPN'; kiEnabled?: boolean }) {
+  const riskItems = getRiskItems(productType, kiEnabled);
   return (
     <CardShell className="p-6">
       <SectionHeader

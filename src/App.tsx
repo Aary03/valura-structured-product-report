@@ -3,25 +3,57 @@
  * Handles form input and report display
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ProductInputForm } from './components/input/ProductInputForm';
 import { ReverseConvertibleReport } from './components/report/ReverseConvertibleReport';
+import { CapitalProtectedParticipationReport } from './components/report/CapitalProtectedParticipationReport';
+import { NewsPage } from './components/pages/NewsPage';
 import { useReportGenerator } from './hooks/useReportGenerator';
-import type { ReverseConvertibleTerms } from './products/reverseConvertible/terms';
+import type { ProductTerms } from './hooks/useReportGenerator';
 import { APITestComponent } from './test-api-component';
+import { TestNewsAPI } from './test-news-api';
 import { PdfReport } from './components/pdf/PdfReport';
 import './styles/globals.css';
 import './styles/theme.css';
 
 // TEMPORARY: Set to true to test API, false for normal app
 const TEST_API_MODE = false;
+const TEST_NEWS_API_MODE = false; // Set to false for normal app, true to test Marketaux API
+
+type RouteType = 'home' | 'breakfast';
 
 function App() {
   const isPdf = new URLSearchParams(window.location.search).get('pdf') === '1';
+  const [currentRoute, setCurrentRoute] = useState<RouteType>('home');
+  
+  // IMPORTANT: All hooks must be called before any early returns (Rules of Hooks)
+  const { reportData, loading, error, generateReport, clearReport } = useReportGenerator();
+  const [showReport, setShowReport] = useState(false);
+
+  useEffect(() => {
+    // Simple routing based on hash
+    const handleHashChange = () => {
+      const hash = window.location.hash.slice(1); // Remove #
+      if (hash === 'breakfast') {
+        setCurrentRoute('breakfast');
+      } else {
+        setCurrentRoute('home');
+      }
+    };
+
+    handleHashChange(); // Check initial hash
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   // TEMPORARY: Show API test component
   if (TEST_API_MODE) {
     return <APITestComponent />;
+  }
+
+  // TEMPORARY: Show News API test component
+  if (TEST_NEWS_API_MODE) {
+    return <TestNewsAPI />;
   }
 
   // PDF-only layout: renders only the 2-page PDF design (no nav, no buttons)
@@ -29,10 +61,12 @@ function App() {
     return <PdfReport />;
   }
 
-  const { reportData, loading, error, generateReport, clearReport } = useReportGenerator();
-  const [showReport, setShowReport] = useState(false);
+  // Route to Valura Breakfast news page
+  if (currentRoute === 'breakfast') {
+    return <NewsPage />;
+  }
 
-  const handleFormSubmit = async (terms: ReverseConvertibleTerms) => {
+  const handleFormSubmit = async (terms: ProductTerms) => {
     await generateReport(terms);
     setShowReport(true);
   };
@@ -48,12 +82,23 @@ function App() {
         <div>
           <div className="bg-white border-b border-grey-border py-4 mb-8">
             <div className="max-w-7xl mx-auto px-8">
-              <h1 className="text-3xl font-bold text-blue-primary">
-                Reverse Convertible Report Generator
-              </h1>
-              <p className="text-grey-medium mt-2">
-                Generate professional term sheet reports for Reverse Convertible products
-              </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-3xl font-bold text-blue-primary">
+                    Structured Product Report Generator
+                  </h1>
+                  <p className="text-grey-medium mt-2">
+                    Generate professional term sheet reports for Reverse Convertibles and Participation Notes
+                  </p>
+                </div>
+                <a
+                  href="#breakfast"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-valura-ink text-white rounded-lg hover:bg-valura-ink/90 transition-colors shadow-md"
+                >
+                  <span>☕</span>
+                  <span className="font-medium">Valura Breakfast</span>
+                </a>
+              </div>
             </div>
           </div>
           <ProductInputForm onSubmit={handleFormSubmit} loading={loading} />
@@ -70,18 +115,31 @@ function App() {
           {/* Back Button */}
           <div className="bg-white border-b border-grey-border py-4 mb-4">
             <div className="max-w-7xl mx-auto px-8">
-              <button
-                onClick={handleBackToInput}
-                className="btn-secondary no-print"
-              >
-                ← Back to Input
-              </button>
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={handleBackToInput}
+                  className="btn-secondary no-print"
+                >
+                  ← Back to Input
+                </button>
+                <a
+                  href="#breakfast"
+                  className="flex items-center gap-2 px-4 py-2 bg-valura-ink text-white rounded-lg hover:bg-valura-ink/90 transition-colors text-sm no-print"
+                >
+                  <span>☕</span>
+                  <span className="font-medium">Valura Breakfast</span>
+                </a>
+              </div>
             </div>
           </div>
 
           {/* Report */}
           {reportData ? (
-            <ReverseConvertibleReport reportData={reportData} />
+            reportData.productType === 'RC' ? (
+              <ReverseConvertibleReport reportData={reportData} />
+            ) : (
+              <CapitalProtectedParticipationReport reportData={reportData} />
+            )
           ) : loading ? (
             <div className="max-w-7xl mx-auto p-8">
               <div className="section-card text-center py-12">

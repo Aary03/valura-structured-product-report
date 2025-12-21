@@ -18,6 +18,9 @@ export type ReverseConvertibleVariant =
  * Reverse Convertible product terms
  */
 export interface ReverseConvertibleTerms {
+  // Discriminator
+  productType: 'RC';
+
   // Basic terms
   notional: number;
   currency: Currency;
@@ -137,9 +140,12 @@ export function validateReverseConvertibleTerms(
  */
 export function getDefaultReverseConvertibleTerms(): ReverseConvertibleTerms {
   return {
+    productType: 'RC',
     notional: 100000,
     currency: 'USD',
-    underlying: { ticker: 'AAPL', name: 'Apple Inc.' },
+    basketType: 'single',
+    underlyings: [{ ticker: 'AAPL', name: 'Apple Inc.' }],
+    initialFixings: [100],
     tenorMonths: 12,
     couponRatePA: 0.10, // 10%
     couponFreqPerYear: 4, // Quarterly

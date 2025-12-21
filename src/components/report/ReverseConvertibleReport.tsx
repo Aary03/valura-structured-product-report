@@ -3,7 +3,7 @@
  * Main container rendering all report sections
  */
 
-import type { ReportData } from '../../hooks/useReportGenerator';
+import type { ReverseConvertibleReportData } from '../../hooks/useReportGenerator';
 import { HeroHeader } from './HeroHeader';
 import { OneMinuteSummary } from './OneMinuteSummary';
 import { KeyDates } from './KeyDates';
@@ -19,6 +19,7 @@ import { ScenarioFlowchart } from '../scenarios/ScenarioFlowchart';
 import { buildRCFlow } from '../scenarios/builders/buildRCFlow';
 import { Risks } from './Risks';
 import { Footer } from './Footer';
+import { TickerNewsSection } from '../news/TickerNewsSection';
 import { normalizeLevel } from '../../products/common/basket';
 import { addMonths, getCurrentISODate } from '../../core/types/dates';
 import { Download } from 'lucide-react';
@@ -26,7 +27,7 @@ import { downloadReportPDFServer } from '../../utils/pdfExport';
 import { useState } from 'react';
 
 interface ReverseConvertibleReportProps {
-  reportData: ReportData;
+  reportData: ReverseConvertibleReportData;
 }
 
 export function ReverseConvertibleReport({ reportData }: ReverseConvertibleReportProps) {
@@ -130,6 +131,19 @@ export function ReverseConvertibleReport({ reportData }: ReverseConvertibleRepor
             terms={terms}
             worstUnderlyingIndex={reportData.worstUnderlyingIndex}
           />
+
+          {/* Ticker News Sections */}
+          <div className="space-y-4">
+            {underlyingData.map((data) => (
+              <TickerNewsSection
+                key={data.symbol}
+                symbol={data.symbol}
+                companyName={data.name}
+                defaultExpanded={false}
+                maxArticles={5}
+              />
+            ))}
+          </div>
 
           {/* Charts Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

@@ -69,6 +69,18 @@ export function bestOf(levels: number[]): { bestLevel: number; bestIndex: number
 }
 
 /**
+ * Calculate average level (simple arithmetic mean).
+ * @param levels Normalized levels array
+ */
+export function averageOf(levels: number[]): number {
+  if (levels.length === 0) {
+    throw new Error('Levels array cannot be empty');
+  }
+  const sum = levels.reduce((acc, v) => acc + v, 0);
+  return sum / levels.length;
+}
+
+/**
  * Normalize a single level (for backward compatibility)
  * @param currentPrice Current price
  * @param initialFixing Initial fixing price

@@ -4,16 +4,19 @@
  * Supports single underlying and worst-of basket (2-3 underlyings)
  */
 
-import { useState, FormEvent } from 'react';
+import { useEffect, useMemo, useState, FormEvent } from 'react';
 import type { ReverseConvertibleTerms, ReverseConvertibleVariant } from '../../products/reverseConvertible/terms';
-import type { Underlying } from '../../products/common/productTypes';
+import type { CapitalProtectedParticipationTerms } from '../../products/capitalProtectedParticipation/terms';
+import { validateCapitalProtectedParticipationTerms } from '../../products/capitalProtectedParticipation/terms';
+import type { Underlying, BasketType } from '../../products/common/productTypes';
 import { frequencyFromString } from '../../products/common/productTypes';
 import { validateReverseConvertibleTerms } from '../../products/reverseConvertible/terms';
 import { SymbolInput } from './SymbolInput';
 import { Plus, X } from 'lucide-react';
+import { computeSMinForContinuity, computeProtectedPayoffPctAtX } from '../../products/capitalProtectedParticipation/guards';
 
 interface ProductInputFormProps {
-  onSubmit: (terms: ReverseConvertibleTerms) => void;
+  onSubmit: (terms: ReverseConvertibleTerms | CapitalProtectedParticipationTerms) => void;
   loading?: boolean;
 }
 
@@ -23,12 +26,14 @@ interface UnderlyingInput {
 }
 
 export function ProductInputForm({ onSubmit, loading = false }: ProductInputFormProps) {
-  const [basketType, setBasketType] = useState<'single' | 'worst_of'>('single');
+  const [productType, setProductType] = useState<'RC' | 'CPPN'>('RC');
+  const [basketTypeRC, setBasketTypeRC] = useState<'single' | 'worst_of'>('single');
+  const [basketTypeCPPN, setBasketTypeCPPN] = useState<BasketType>('single');
   const [underlyings, setUnderlyings] = useState<UnderlyingInput[]>([
     { symbol: 'AAPL', name: 'Apple Inc.' },
   ]);
 
-  const [formData, setFormData] = useState({
+  const [rcFormData, setRcFormData] = useState({
     notional: '100000',
     currency: 'USD' as const,
     tenorMonths: '12',
@@ -41,11 +46,52 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
     conversionRatio: '1.0',
   });
 
+  type CppnFormState = {
+    notional: string;
+    currency: 'USD' | 'EUR' | 'GBP' | 'JPY';
+    tenorMonths: string;
+    capitalProtectionPct: string;
+    participationDirection: 'up' | 'down';
+    participationStartPct: string;
+    participationRatePct: string;
+    capType: 'none' | 'capped';
+    capLevelPct: string;
+    knockInEnabled: boolean;
+    knockInLevelPct: string;
+    downsideStrikePct: string;
+  };
+
+  const [cppnFormData, setCppnFormData] = useState<CppnFormState>({
+    notional: '100000',
+    currency: 'USD',
+    tenorMonths: '12',
+    capitalProtectionPct: '100', // P
+    participationDirection: 'up', // up | down
+    participationStartPct: '100', // K
+    participationRatePct: '120', // α
+    capType: 'none', // none | capped
+    capLevelPct: '140', // C
+    knockInEnabled: false,
+    knockInLevelPct: '70', // KI
+    downsideStrikePct: '', // S (default: KI)
+  });
+
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const handleChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+  const handleRcChange = (field: string, value: string) => {
+    setRcFormData((prev) => ({ ...prev, [field]: value }));
     // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
+
+  const handleCppnChange = (field: string, value: string) => {
+    setCppnFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => {
         const newErrors = { ...prev };
@@ -77,12 +123,10 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
     }
   };
 
-  const handleBasketTypeChange = (type: 'single' | 'worst_of') => {
-    setBasketType(type);
+  const ensureUnderlyingCountForBasket = (type: 'single' | 'worst_of' | 'best_of' | 'average') => {
     if (type === 'single') {
       setUnderlyings([underlyings[0] || { symbol: '', name: '' }]);
     } else {
-      // Ensure at least 2 underlyings for worst-of
       if (underlyings.length < 2) {
         setUnderlyings([
           underlyings[0] || { symbol: '', name: '' },
@@ -91,6 +135,57 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
       }
     }
   };
+
+  const handleBasketTypeChangeRC = (type: 'single' | 'worst_of') => {
+    setBasketTypeRC(type);
+    ensureUnderlyingCountForBasket(type);
+  };
+
+  const handleBasketTypeChangeCPPN = (type: BasketType) => {
+    setBasketTypeCPPN(type);
+    ensureUnderlyingCountForBasket(type);
+  };
+
+  const activeBasketType = productType === 'RC' ? basketTypeRC : basketTypeCPPN;
+
+  const canAddUnderlying = useMemo(() => {
+    return activeBasketType !== 'single' && underlyings.length < 3;
+  }, [activeBasketType, underlyings.length]);
+
+  const cppnStrikeGuard = useMemo(() => {
+    if (productType !== 'CPPN') return null;
+    if (!cppnFormData.knockInEnabled) return null;
+    const P = parseFloat(cppnFormData.capitalProtectionPct);
+    const KI = parseFloat(cppnFormData.knockInLevelPct);
+    if (!Number.isFinite(P) || !Number.isFinite(KI) || P <= 0 || KI <= 0) return null;
+
+    const params = {
+      capitalProtectionPct: P,
+      participationDirection: cppnFormData.participationDirection,
+      participationStartPct: parseFloat(cppnFormData.participationStartPct) || 100,
+      participationRatePct: parseFloat(cppnFormData.participationRatePct) || 100,
+      capType: cppnFormData.capType,
+      capLevelPct: cppnFormData.capType === 'capped' ? (parseFloat(cppnFormData.capLevelPct) || undefined) : undefined,
+    } as const;
+
+    const protectedAtKI = computeProtectedPayoffPctAtX(params, KI);
+    const sMin = computeSMinForContinuity(params, KI, 1);
+    const lock = P < 100;
+    return { sMin, protectedAtKI, lock };
+  }, [productType, cppnFormData]);
+
+  // Auto-lock S to S_min when KI enabled and P < 100 (prevents discontinuity / "breach becomes better")
+  useEffect(() => {
+    if (productType !== 'CPPN') return;
+    if (!cppnFormData.knockInEnabled) return;
+    if (!cppnStrikeGuard) return;
+    if (!cppnStrikeGuard.lock) return;
+    if (!Number.isFinite(cppnStrikeGuard.sMin)) return;
+    const next = cppnStrikeGuard.sMin.toFixed(2);
+    if (cppnFormData.downsideStrikePct !== next) {
+      setCppnFormData((prev) => ({ ...prev, downsideStrikePct: next }));
+    }
+  }, [productType, cppnFormData.knockInEnabled, cppnStrikeGuard, cppnFormData.downsideStrikePct]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -104,42 +199,93 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
     // Get initial fixings (will be set from API data, use current prices as placeholder)
     const initialFixings = underlyingsArray.map(() => 100); // Placeholder, will be replaced by API data
 
-    const terms: ReverseConvertibleTerms = {
-      notional: parseFloat(formData.notional),
-      currency: formData.currency,
-      basketType,
-      underlyings: underlyingsArray,
-      initialFixings,
-      tenorMonths: parseInt(formData.tenorMonths),
-      couponRatePA: parseFloat(formData.couponRate) / 100, // Convert % to decimal
-      couponFreqPerYear: frequencyFromString(formData.couponFrequency),
-      couponCondition: 'unconditional',
-      conversionRatio: parseFloat(formData.conversionRatio),
-      variant: formData.variant,
-    };
+    if (productType === 'RC') {
+      const terms: ReverseConvertibleTerms = {
+        productType: 'RC',
+        notional: parseFloat(rcFormData.notional),
+        currency: rcFormData.currency,
+        basketType: basketTypeRC,
+        underlyings: underlyingsArray,
+        initialFixings,
+        tenorMonths: parseInt(rcFormData.tenorMonths),
+        couponRatePA: parseFloat(rcFormData.couponRate) / 100, // Convert % to decimal
+        couponFreqPerYear: frequencyFromString(rcFormData.couponFrequency),
+        couponCondition: 'unconditional',
+        conversionRatio: parseFloat(rcFormData.conversionRatio),
+        variant: rcFormData.variant,
+      };
 
-    // Add variant-specific fields
-    if (formData.variant === 'standard_barrier_rc') {
-      terms.barrierPct = parseFloat(formData.barrierPct) / 100;
-    } else {
-      terms.strikePct = parseFloat(formData.strikePct) / 100;
-      if (formData.knockInBarrierPct) {
-        terms.knockInBarrierPct = parseFloat(formData.knockInBarrierPct) / 100;
+      if (rcFormData.variant === 'standard_barrier_rc') {
+        terms.barrierPct = parseFloat(rcFormData.barrierPct) / 100;
+      } else {
+        terms.strikePct = parseFloat(rcFormData.strikePct) / 100;
+        if (rcFormData.knockInBarrierPct) {
+          terms.knockInBarrierPct = parseFloat(rcFormData.knockInBarrierPct) / 100;
+        }
       }
+
+      const validation = validateReverseConvertibleTerms(terms);
+      if (!validation.valid) {
+        const errorMap: Record<string, string> = {};
+        validation.errors.forEach((error) => {
+          if (error.includes('Notional')) errorMap.notional = error;
+          else if (error.includes('Tenor')) errorMap.tenorMonths = error;
+          else if (error.includes('Coupon')) errorMap.couponRate = error;
+          else if (error.includes('Barrier')) errorMap.barrierPct = error;
+          else if (error.includes('Strike')) errorMap.strikePct = error;
+          else if (error.includes('Conversion')) errorMap.conversionRatio = error;
+          else if (error.includes('underlying') || error.includes('Underlying')) errorMap.underlyings = error;
+          else errorMap._general = error;
+        });
+        setErrors(errorMap);
+        return;
+      }
+
+      setErrors({});
+      onSubmit(terms);
+      return;
     }
 
-    // Validate
-    const validation = validateReverseConvertibleTerms(terms);
+    const capType = cppnFormData.capType;
+    const knockInEnabled = cppnFormData.knockInEnabled;
+    const ki = knockInEnabled ? parseFloat(cppnFormData.knockInLevelPct) : undefined;
+    const strikeS =
+      knockInEnabled
+        ? (cppnFormData.downsideStrikePct ? parseFloat(cppnFormData.downsideStrikePct) : ki)
+        : undefined;
+
+    const terms: CapitalProtectedParticipationTerms = {
+      productType: 'CPPN',
+      notional: parseFloat(cppnFormData.notional),
+      currency: cppnFormData.currency,
+      tenorMonths: parseInt(cppnFormData.tenorMonths),
+      underlyings: underlyingsArray,
+      initialFixings,
+      basketType: basketTypeCPPN,
+      capitalProtectionPct: parseFloat(cppnFormData.capitalProtectionPct),
+      participationDirection: cppnFormData.participationDirection,
+      participationStartPct: parseFloat(cppnFormData.participationStartPct),
+      participationRatePct: parseFloat(cppnFormData.participationRatePct),
+      capType,
+      capLevelPct: capType === 'capped' ? parseFloat(cppnFormData.capLevelPct) : undefined,
+      knockInEnabled,
+      knockInMode: 'EUROPEAN',
+      knockInLevelPct: knockInEnabled ? ki : undefined,
+      downsideStrikePct: knockInEnabled ? strikeS : undefined,
+    };
+
+    const validation = validateCapitalProtectedParticipationTerms(terms);
     if (!validation.valid) {
       const errorMap: Record<string, string> = {};
       validation.errors.forEach((error) => {
-        // Map errors to form fields
         if (error.includes('Notional')) errorMap.notional = error;
         else if (error.includes('Tenor')) errorMap.tenorMonths = error;
-        else if (error.includes('Coupon')) errorMap.couponRate = error;
-        else if (error.includes('Barrier')) errorMap.barrierPct = error;
-        else if (error.includes('Strike')) errorMap.strikePct = error;
-        else if (error.includes('Conversion')) errorMap.conversionRatio = error;
+        else if (error.includes('Capital protection')) errorMap.capitalProtectionPct = error;
+        else if (error.includes('Participation start')) errorMap.participationStartPct = error;
+        else if (error.includes('Participation rate')) errorMap.participationRatePct = error;
+        else if (error.includes('Cap level')) errorMap.capLevelPct = error;
+        else if (error.includes('Knock-in')) errorMap.knockInLevelPct = error;
+        else if (error.includes('Downside strike')) errorMap.downsideStrikePct = error;
         else if (error.includes('underlying') || error.includes('Underlying')) errorMap.underlyings = error;
         else errorMap._general = error;
       });
@@ -151,16 +297,55 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
     onSubmit(terms);
   };
 
-  const isStandardVariant = formData.variant === 'standard_barrier_rc';
+  const isStandardVariant = rcFormData.variant === 'standard_barrier_rc';
 
   return (
     <div className="max-w-4xl mx-auto p-8">
       <div className="section-card">
         <h2 className="text-3xl font-bold mb-6 text-valura-ink">
-          Reverse Convertible Product Configuration
+          {productType === 'RC'
+            ? 'Reverse Convertible Product Configuration'
+            : 'Capital Protected Participation Note Configuration'}
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Product Selector */}
+          <div className="border border-border rounded-lg p-4 bg-surface shadow-soft">
+            <div className="label mb-2">Product Type</div>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="radio"
+                  name="productType"
+                  value="RC"
+                  checked={productType === 'RC'}
+                  onChange={() => {
+                    setProductType('RC');
+                    // Ensure RC only uses single / worst-of baskets
+                    if (basketTypeRC !== 'single' && basketTypeRC !== 'worst_of') setBasketTypeRC('single');
+                  }}
+                  className="w-5 h-5 text-valura-ink"
+                />
+                <span className="text-valura-ink font-medium">Reverse Convertible</span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="radio"
+                  name="productType"
+                  value="CPPN"
+                  checked={productType === 'CPPN'}
+                  onChange={() => setProductType('CPPN')}
+                  className="w-5 h-5 text-valura-ink"
+                />
+                <span className="text-valura-ink font-medium">Capital Protected Participation Note</span>
+              </label>
+            </div>
+            <div className="text-sm text-muted mt-2">
+              {productType === 'RC'
+                ? 'Income-focused note with conditional downside via barrier/strike.'
+                : 'Principal protected participation note with optional knock-in (airbag-style).'}
+            </div>
+          </div>
           {/* Basic Terms */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
@@ -168,8 +353,12 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
               <input
                 type="number"
                 className="input-field"
-                value={formData.notional}
-                onChange={(e) => handleChange('notional', e.target.value)}
+                value={productType === 'RC' ? rcFormData.notional : cppnFormData.notional}
+                onChange={(e) =>
+                  productType === 'RC'
+                    ? handleRcChange('notional', e.target.value)
+                    : handleCppnChange('notional', e.target.value)
+                }
                 required
                 min="1"
               />
@@ -182,8 +371,12 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
               <label className="label">Currency</label>
               <select
                 className="input-field"
-                value={formData.currency}
-                onChange={(e) => handleChange('currency', e.target.value)}
+                value={productType === 'RC' ? rcFormData.currency : cppnFormData.currency}
+                onChange={(e) =>
+                  productType === 'RC'
+                    ? handleRcChange('currency', e.target.value)
+                    : handleCppnChange('currency', e.target.value)
+                }
               >
                 <option value="USD">USD</option>
                 <option value="EUR">EUR</option>
@@ -197,8 +390,12 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
               <input
                 type="number"
                 className="input-field"
-                value={formData.tenorMonths}
-                onChange={(e) => handleChange('tenorMonths', e.target.value)}
+                value={productType === 'RC' ? rcFormData.tenorMonths : cppnFormData.tenorMonths}
+                onChange={(e) =>
+                  productType === 'RC'
+                    ? handleRcChange('tenorMonths', e.target.value)
+                    : handleCppnChange('tenorMonths', e.target.value)
+                }
                 required
                 min="1"
               />
@@ -212,30 +409,48 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
           <div className="border-t border-border pt-6">
             <h3 className="text-xl font-semibold mb-4 text-valura-ink">Underlying Selection</h3>
             <div className="space-y-4 mb-6">
-              <div className="flex space-x-4">
-                <label className="flex items-center space-x-3 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="basketType"
-                    value="single"
-                    checked={basketType === 'single'}
-                    onChange={() => handleBasketTypeChange('single')}
-                    className="w-5 h-5 text-valura-ink"
-                  />
-                  <span className="text-valura-ink">Single Underlying</span>
-                </label>
-                <label className="flex items-center space-x-3 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="basketType"
-                    value="worst_of"
-                    checked={basketType === 'worst_of'}
-                    onChange={() => handleBasketTypeChange('worst_of')}
-                    className="w-5 h-5 text-valura-ink"
-                  />
-                  <span className="text-valura-ink">Worst-Of Basket (2-3)</span>
-                </label>
-              </div>
+              {productType === 'RC' ? (
+                <div className="flex space-x-4">
+                  <label className="flex items-center space-x-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="basketType"
+                      value="single"
+                      checked={basketTypeRC === 'single'}
+                      onChange={() => handleBasketTypeChangeRC('single')}
+                      className="w-5 h-5 text-valura-ink"
+                    />
+                    <span className="text-valura-ink">Single Underlying</span>
+                  </label>
+                  <label className="flex items-center space-x-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="basketType"
+                      value="worst_of"
+                      checked={basketTypeRC === 'worst_of'}
+                      onChange={() => handleBasketTypeChangeRC('worst_of')}
+                      className="w-5 h-5 text-valura-ink"
+                    />
+                    <span className="text-valura-ink">Worst-Of Basket (2-3)</span>
+                  </label>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="label">Basket Method</label>
+                    <select
+                      className="input-field"
+                      value={basketTypeCPPN}
+                      onChange={(e) => handleBasketTypeChangeCPPN(e.target.value as BasketType)}
+                    >
+                      <option value="single">Single Underlying</option>
+                      <option value="worst_of">Worst-of Basket</option>
+                      <option value="best_of">Best-of Basket</option>
+                      <option value="average">Average Basket</option>
+                    </select>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Underlying Inputs */}
@@ -246,7 +461,7 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
                     <SymbolInput
                       value={underlying.symbol}
                       onChange={(symbol, name) => handleUnderlyingChange(index, symbol, name)}
-                      label={`Underlying ${index + 1}${basketType === 'worst_of' ? ' (Worst-Of)' : ''}`}
+                      label={`Underlying ${index + 1}${activeBasketType === 'single' ? '' : ' (Basket)'}`}
                       placeholder="Search symbol (e.g., AAPL)"
                       required
                     />
@@ -254,7 +469,7 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
                       <p className="text-sm text-muted mt-1 ml-1">{underlying.name}</p>
                     )}
                   </div>
-                  {basketType === 'worst_of' && underlyings.length > 2 && (
+                  {activeBasketType !== 'single' && underlyings.length > 2 && (
                     <button
                       type="button"
                       onClick={() => handleRemoveUnderlying(index)}
@@ -266,7 +481,7 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
                   )}
                 </div>
               ))}
-              {basketType === 'worst_of' && underlyings.length < 3 && (
+              {canAddUnderlying && (
                 <button
                   type="button"
                   onClick={handleAddUnderlying}
@@ -282,165 +497,348 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
             </div>
           </div>
 
-          {/* Coupon Terms */}
-          <div className="border-t border-border pt-6">
-            <h3 className="text-xl font-semibold mb-4 text-valura-ink">Coupon Terms</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="label">Coupon Rate (%)</label>
-                <input
-                  type="number"
-                  className="input-field"
-                  value={formData.couponRate}
-                  onChange={(e) => handleChange('couponRate', e.target.value)}
-                  required
-                  min="0"
-                  max="100"
-                  step="0.1"
-                />
-                {errors.couponRate && (
-                  <p className="text-danger-fg text-sm mt-1">{errors.couponRate}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="label">Coupon Frequency</label>
-                <select
-                  className="input-field"
-                  value={formData.couponFrequency}
-                  onChange={(e) => handleChange('couponFrequency', e.target.value)}
-                >
-                  <option value="monthly">Monthly</option>
-                  <option value="quarterly">Quarterly</option>
-                  <option value="semi-annual">Semi-Annual</option>
-                  <option value="annual">Annual</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Variant Selection */}
-          <div className="border-t border-border pt-6">
-            <h3 className="text-xl font-semibold mb-4 text-valura-ink">Product Variant</h3>
-            <div className="space-y-4">
-              <label className="flex items-center space-x-3 cursor-pointer">
-                <input
-                  type="radio"
-                  name="variant"
-                  value="standard_barrier_rc"
-                  checked={formData.variant === 'standard_barrier_rc'}
-                  onChange={(e) => handleChange('variant', e.target.value)}
-                  className="w-5 h-5 text-valura-ink"
-                />
-                <span className="text-valura-ink">Standard Barrier Reverse Convertible</span>
-              </label>
-
-              <label className="flex items-center space-x-3 cursor-pointer">
-                <input
-                  type="radio"
-                  name="variant"
-                  value="low_strike_geared_put"
-                  checked={formData.variant === 'low_strike_geared_put'}
-                  onChange={(e) => handleChange('variant', e.target.value)}
-                  className="w-5 h-5 text-valura-ink"
-                />
-                <span className="text-valura-ink">Low Strike / Geared Put</span>
-              </label>
-            </div>
-          </div>
-
-          {/* Variant-Specific Fields */}
-          {isStandardVariant ? (
+          {/* RC-only: Coupon Terms */}
+          {productType === 'RC' && (
             <div className="border-t border-border pt-6">
-              <h3 className="text-xl font-semibold mb-4 text-valura-ink">Barrier Terms</h3>
+              <h3 className="text-xl font-semibold mb-4 text-valura-ink">Coupon Terms</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="label">Barrier (%)</label>
+                  <label className="label">Coupon Rate (%)</label>
                   <input
                     type="number"
                     className="input-field"
-                    value={formData.barrierPct}
-                    onChange={(e) => handleChange('barrierPct', e.target.value)}
+                    value={rcFormData.couponRate}
+                    onChange={(e) => handleRcChange('couponRate', e.target.value)}
                     required
                     min="0"
                     max="100"
                     step="0.1"
                   />
-                  {errors.barrierPct && (
-                    <p className="text-danger-fg text-sm mt-1">{errors.barrierPct}</p>
+                  {errors.couponRate && (
+                    <p className="text-danger-fg text-sm mt-1">{errors.couponRate}</p>
                   )}
-                  <p className="text-sm text-muted mt-1">
-                    Conversion occurs if worst-of final level &lt; barrier
-                  </p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="border-t border-border pt-6">
-              <h3 className="text-xl font-semibold mb-4 text-valura-ink">Strike Terms</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="label">Strike (%)</label>
-                  <input
-                    type="number"
-                    className="input-field"
-                    value={formData.strikePct}
-                    onChange={(e) => handleChange('strikePct', e.target.value)}
-                    required
-                    min="0"
-                    max="100"
-                    step="0.1"
-                  />
-                  {errors.strikePct && (
-                    <p className="text-danger-fg text-sm mt-1">{errors.strikePct}</p>
-                  )}
-                  <p className="text-sm text-muted mt-1">
-                    Lower strike = higher gearing
-                  </p>
                 </div>
 
                 <div>
-                  <label className="label">Knock-in Barrier (%) (Optional)</label>
-                  <input
-                    type="number"
+                  <label className="label">Coupon Frequency</label>
+                  <select
                     className="input-field"
-                    value={formData.knockInBarrierPct}
-                    onChange={(e) => handleChange('knockInBarrierPct', e.target.value)}
-                    min="0"
-                    max="100"
-                    step="0.1"
-                    placeholder="Defaults to strike"
-                  />
-                  {errors.knockInBarrierPct && (
-                    <p className="text-danger-fg text-sm mt-1">{errors.knockInBarrierPct}</p>
-                  )}
+                    value={rcFormData.couponFrequency}
+                    onChange={(e) => handleRcChange('couponFrequency', e.target.value)}
+                  >
+                    <option value="monthly">Monthly</option>
+                    <option value="quarterly">Quarterly</option>
+                    <option value="semi-annual">Semi-Annual</option>
+                    <option value="annual">Annual</option>
+                  </select>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Conversion Terms */}
-          <div className="border-t border-border pt-6">
-            <h3 className="text-xl font-semibold mb-4 text-valura-ink">Conversion Terms</h3>
-            <div>
-              <label className="label">Conversion Ratio</label>
-              <input
-                type="number"
-                className="input-field"
-                value={formData.conversionRatio}
-                onChange={(e) => handleChange('conversionRatio', e.target.value)}
-                required
-                min="0.1"
-                step="0.1"
-              />
-              {errors.conversionRatio && (
-                <p className="text-danger-fg text-sm mt-1">{errors.conversionRatio}</p>
+          {/* RC-only: Variant + Conversion */}
+          {productType === 'RC' ? (
+            <>
+              <div className="border-t border-border pt-6">
+                <h3 className="text-xl font-semibold mb-4 text-valura-ink">Product Variant</h3>
+                <div className="space-y-4">
+                  <label className="flex items-center space-x-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="variant"
+                      value="standard_barrier_rc"
+                      checked={rcFormData.variant === 'standard_barrier_rc'}
+                      onChange={(e) => handleRcChange('variant', e.target.value)}
+                      className="w-5 h-5 text-valura-ink"
+                    />
+                    <span className="text-valura-ink">Standard Barrier Reverse Convertible</span>
+                  </label>
+
+                  <label className="flex items-center space-x-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="variant"
+                      value="low_strike_geared_put"
+                      checked={rcFormData.variant === 'low_strike_geared_put'}
+                      onChange={(e) => handleRcChange('variant', e.target.value)}
+                      className="w-5 h-5 text-valura-ink"
+                    />
+                    <span className="text-valura-ink">Low Strike / Geared Put</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Variant-Specific Fields */}
+              {isStandardVariant ? (
+                <div className="border-t border-border pt-6">
+                  <h3 className="text-xl font-semibold mb-4 text-valura-ink">Barrier Terms</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="label">Barrier (%)</label>
+                      <input
+                        type="number"
+                        className="input-field"
+                        value={rcFormData.barrierPct}
+                        onChange={(e) => handleRcChange('barrierPct', e.target.value)}
+                        required
+                        min="0"
+                        max="100"
+                        step="0.1"
+                      />
+                      {errors.barrierPct && (
+                        <p className="text-danger-fg text-sm mt-1">{errors.barrierPct}</p>
+                      )}
+                      <p className="text-sm text-muted mt-1">
+                        Conversion occurs if worst-of final level &lt; barrier
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="border-t border-border pt-6">
+                  <h3 className="text-xl font-semibold mb-4 text-valura-ink">Strike Terms</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="label">Strike (%)</label>
+                      <input
+                        type="number"
+                        className="input-field"
+                        value={rcFormData.strikePct}
+                        onChange={(e) => handleRcChange('strikePct', e.target.value)}
+                        required
+                        min="0"
+                        max="100"
+                        step="0.1"
+                      />
+                      {errors.strikePct && (
+                        <p className="text-danger-fg text-sm mt-1">{errors.strikePct}</p>
+                      )}
+                      <p className="text-sm text-muted mt-1">
+                        Lower strike = higher gearing
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="label">Knock-in Barrier (%) (Optional)</label>
+                      <input
+                        type="number"
+                        className="input-field"
+                        value={rcFormData.knockInBarrierPct}
+                        onChange={(e) => handleRcChange('knockInBarrierPct', e.target.value)}
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        placeholder="Defaults to strike"
+                      />
+                      {errors.knockInBarrierPct && (
+                        <p className="text-danger-fg text-sm mt-1">{errors.knockInBarrierPct}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
               )}
-              <p className="text-sm text-muted mt-1">
-                Shares per unit (typically 1.0)
-              </p>
-            </div>
-          </div>
+
+              <div className="border-t border-border pt-6">
+                <h3 className="text-xl font-semibold mb-4 text-valura-ink">Conversion Terms</h3>
+                <div>
+                  <label className="label">Conversion Ratio</label>
+                  <input
+                    type="number"
+                    className="input-field"
+                    value={rcFormData.conversionRatio}
+                    onChange={(e) => handleRcChange('conversionRatio', e.target.value)}
+                    required
+                    min="0.1"
+                    step="0.1"
+                  />
+                  {errors.conversionRatio && (
+                    <p className="text-danger-fg text-sm mt-1">{errors.conversionRatio}</p>
+                  )}
+                  <p className="text-sm text-muted mt-1">
+                    Shares per unit (typically 1.0)
+                  </p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* CPPN: Product Details */}
+              <div className="border-t border-border pt-6">
+                <h3 className="text-xl font-semibold mb-4 text-valura-ink">Product Details</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="label">Capital Protection (%)</label>
+                    <input
+                      type="number"
+                      className="input-field"
+                      value={cppnFormData.capitalProtectionPct}
+                      onChange={(e) => handleCppnChange('capitalProtectionPct', e.target.value)}
+                      required
+                      min="0"
+                      max="200"
+                      step="0.1"
+                    />
+                    {errors.capitalProtectionPct && (
+                      <p className="text-danger-fg text-sm mt-1">{errors.capitalProtectionPct}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="label">Participation Direction</label>
+                    <select
+                      className="input-field"
+                      value={cppnFormData.participationDirection}
+                      onChange={(e) => handleCppnChange('participationDirection', e.target.value)}
+                    >
+                      <option value="up">Upside Participation</option>
+                      <option value="down">Downside Participation</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="label">Participation Starts At (%)</label>
+                    <input
+                      type="number"
+                      className="input-field"
+                      value={cppnFormData.participationStartPct}
+                      onChange={(e) => handleCppnChange('participationStartPct', e.target.value)}
+                      required
+                      min="0"
+                      max="300"
+                      step="0.1"
+                    />
+                    {errors.participationStartPct && (
+                      <p className="text-danger-fg text-sm mt-1">{errors.participationStartPct}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="label">Participation Rate (%)</label>
+                    <input
+                      type="number"
+                      className="input-field"
+                      value={cppnFormData.participationRatePct}
+                      onChange={(e) => handleCppnChange('participationRatePct', e.target.value)}
+                      required
+                      min="0"
+                      max="500"
+                      step="0.1"
+                    />
+                    {errors.participationRatePct && (
+                      <p className="text-danger-fg text-sm mt-1">{errors.participationRatePct}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* CPPN: Cap */}
+              <div className="border-t border-border pt-6">
+                <h3 className="text-xl font-semibold mb-4 text-valura-ink">Upside Cap</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="label">Cap</label>
+                    <select
+                      className="input-field"
+                      value={cppnFormData.capType}
+                      onChange={(e) => handleCppnChange('capType', e.target.value)}
+                    >
+                      <option value="none">No Cap</option>
+                      <option value="capped">Capped</option>
+                    </select>
+                  </div>
+                  {cppnFormData.capType === 'capped' && (
+                    <div>
+                      <label className="label">Cap Level (%)</label>
+                      <input
+                        type="number"
+                        className="input-field"
+                        value={cppnFormData.capLevelPct}
+                        onChange={(e) => handleCppnChange('capLevelPct', e.target.value)}
+                        required
+                        min="0"
+                        max="500"
+                        step="0.1"
+                      />
+                      {errors.capLevelPct && (
+                        <p className="text-danger-fg text-sm mt-1">{errors.capLevelPct}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* CPPN: Knock-In */}
+              <div className="border-t border-border pt-6">
+                <h3 className="text-xl font-semibold mb-4 text-valura-ink">Knock-In (Optional)</h3>
+                <label className="flex items-center gap-3 cursor-pointer mb-4">
+                  <input
+                    type="checkbox"
+                    checked={cppnFormData.knockInEnabled}
+                    onChange={(e) => setCppnFormData((prev) => ({ ...prev, knockInEnabled: e.target.checked }))}
+                    className="w-5 h-5"
+                  />
+                  <span className="text-valura-ink">Enable Knock-In (European, checked at maturity)</span>
+                </label>
+
+                {cppnFormData.knockInEnabled && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="label">Knock-In Level (%)</label>
+                      <input
+                        type="number"
+                        className="input-field"
+                        value={cppnFormData.knockInLevelPct}
+                        onChange={(e) => handleCppnChange('knockInLevelPct', e.target.value)}
+                        required
+                        min="0"
+                        max="300"
+                        step="0.1"
+                      />
+                      {errors.knockInLevelPct && (
+                        <p className="text-danger-fg text-sm mt-1">{errors.knockInLevelPct}</p>
+                      )}
+                      <p className="text-sm text-muted mt-1">
+                        If final basket level falls below KI, payoff switches to a geared-put regime.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="label">
+                        {cppnStrikeGuard?.lock ? 'Downside Conversion Strike (auto) S (%)' : 'Downside Strike S (%)'}
+                      </label>
+                      <input
+                        type="number"
+                        className="input-field"
+                        value={cppnFormData.downsideStrikePct}
+                        onChange={(e) => handleCppnChange('downsideStrikePct', e.target.value)}
+                        min="0"
+                        max="300"
+                        step="0.1"
+                        placeholder="Defaults to KI (airbag)"
+                        readOnly={!!cppnStrikeGuard?.lock}
+                      />
+                      {errors.downsideStrikePct && (
+                        <p className="text-danger-fg text-sm mt-1">{errors.downsideStrikePct}</p>
+                      )}
+                      <p className="text-sm text-muted mt-1">
+                        {cppnStrikeGuard?.lock ? (
+                          <>
+                            Strike auto-set to keep payoff smooth at KI (no jump).{' '}
+                            <span className="font-mono">S_min = {cppnStrikeGuard.sMin.toFixed(2)}%</span>{' '}
+                            (computed so payoff just below KI equals protected payoff at KI).
+                          </>
+                        ) : (
+                          <>
+                            Default <span className="font-mono">S = KI</span> makes the payoff curve continuous at the KI point.
+                          </>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
 
           {/* General Errors */}
           {errors._general && (

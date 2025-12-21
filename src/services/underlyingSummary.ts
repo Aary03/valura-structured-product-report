@@ -16,6 +16,7 @@ export interface UnderlyingSummary {
   initialFixing: number;
   performancePct: number; // % vs initial fixing
   distanceToBarrierPctPts: number; // Percentage points above/below barrier
+  thresholdLabel?: string; // e.g. "Barrier" | "Participation Start"
   sector?: string;
   industry?: string;
   exchange?: string;
@@ -163,23 +164,24 @@ function generateInsight(
   distanceToBarrierPctPts: number,
   vol30dAnn?: number,
   analystConsensus?: string,
-  targetUpside?: number
+  targetUpside?: number,
+  thresholdLabel: string = 'barrier'
 ): string {
   const absDistance = Math.abs(distanceToBarrierPctPts);
   
   if (absDistance < 5) {
-    return 'Close to barrier — this name drives conversion risk.';
+    return `Close to ${thresholdLabel} — this name drives payoff sensitivity.`;
   }
   
   if (vol30dAnn && vol30dAnn * 100 > 40) {
-    return 'Higher volatility — larger chance of breaching barrier.';
+    return `Higher volatility — larger chance of moving through the ${thresholdLabel}.`;
   }
   
   if (analystConsensus && analystConsensus.toLowerCase().includes('buy') && targetUpside && targetUpside > 10) {
     return 'Analysts constructive; target implies upside from spot.';
   }
   
-  return 'Stable profile; monitor trend and buffer to barrier.';
+  return `Stable profile; monitor trend and buffer to ${thresholdLabel}.`;
 }
 
 /**
@@ -189,7 +191,8 @@ export async function buildUnderlyingSummary(
   symbol: string,
   initialFixing: number,
   barrierPct: number,
-  historicalData?: HistoricalPricePoint[]
+  historicalData?: HistoricalPricePoint[],
+  options?: { thresholdLabel?: string }
 ): Promise<UnderlyingSummary> {
   try {
     // Fetch quote, profile, price target, ratings (+ ratios TTM) in parallel
@@ -273,7 +276,7 @@ export async function buildUnderlyingSummary(
     // Analyst info
     const analystConsensus = ratings?.ratingRecommendation || 
       (ratings?.rating ? ratings.rating : undefined);
-    const targetPrice = priceTarget?.targetConsensus || priceTarget?.targetMean;
+    const targetPrice = priceTarget?.targetConsensus || priceTarget?.targetMedian;
     const targetUpside = targetPrice && spotPrice > 0 
       ? ((targetPrice / spotPrice) - 1) * 100 
       : undefined;
@@ -294,7 +297,13 @@ export async function buildUnderlyingSummary(
     const nextEarningsDate = parseMaybeDate(quote.earningsAnnouncement);
 
     // Generate insight
-    const insight = generateInsight(distanceToBarrierPctPts, vol30dAnn, analystConsensus, targetUpside);
+    const insight = generateInsight(
+      distanceToBarrierPctPts,
+      vol30dAnn,
+      analystConsensus,
+      targetUpside,
+      options?.thresholdLabel || 'barrier'
+    );
 
     // Logo URL
     const logoUrl = profile?.image 
@@ -309,6 +318,7 @@ export async function buildUnderlyingSummary(
       initialFixing,
       performancePct,
       distanceToBarrierPctPts,
+      thresholdLabel: options?.thresholdLabel,
       sector,
       industry,
       exchange,
