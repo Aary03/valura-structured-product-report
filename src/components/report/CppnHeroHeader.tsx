@@ -126,10 +126,12 @@ export function CppnHeroHeader({ terms }: CppnHeroHeaderProps) {
               <span className="opacity-90">Currency:</span>
               <span className="font-semibold">{terms.currency}</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="opacity-90">Protection:</span>
-              <span className="font-semibold">{terms.capitalProtectionPct}%</span>
-            </div>
+            {terms.capitalProtectionPct > 0 && (
+              <div className="flex items-center justify-between">
+                <span className="opacity-90">Protection:</span>
+                <span className="font-semibold">{terms.capitalProtectionPct}%</span>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <span className="opacity-90">Participation:</span>
               <span className="font-semibold">{terms.participationRatePct}% @ {terms.participationStartPct}%</span>
@@ -149,12 +151,14 @@ export function CppnHeroHeader({ terms }: CppnHeroHeaderProps) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <KpiTile
-          icon={<Shield className="w-5 h-5" />}
-          value={`${terms.capitalProtectionPct}%`}
-          subtitle="Capital Protection (floor)"
-          gradient="primary"
-        />
+        {terms.capitalProtectionPct > 0 && (
+          <KpiTile
+            icon={<Shield className="w-5 h-5" />}
+            value={`${terms.capitalProtectionPct}%`}
+            subtitle="Capital Protection"
+            gradient="primary"
+          />
+        )}
         <KpiTile
           icon={<TrendingUp className="w-5 h-5" />}
           value={`${terms.participationRatePct}%`}

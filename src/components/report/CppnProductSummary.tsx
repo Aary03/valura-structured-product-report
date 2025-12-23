@@ -16,7 +16,7 @@ export function CppnProductSummary({ terms }: { terms: CapitalProtectedParticipa
   const badges = [
     {
       icon: <Calendar className="w-4 h-4" />,
-      label: `${terms.tenorMonths}M Duration`,
+      label: `${terms.tenorMonths}M Tenor`,
       color: 'blue' as const,
     },
     {
@@ -29,24 +29,62 @@ export function CppnProductSummary({ terms }: { terms: CapitalProtectedParticipa
   if (terms.basketType !== 'single') {
     badges.push({
       icon: <Layers className="w-4 h-4" />,
-      label: terms.basketType === 'worst_of' ? 'Worst-Of' : terms.basketType === 'best_of' ? 'Best-Of' : 'Average',
+      label: terms.basketType === 'worst_of' ? 'Worst-Of Basket' : terms.basketType === 'best_of' ? 'Best-Of Basket' : 'Average Basket',
       color: 'teal' as const,
     });
   }
 
-  badges.push({
-    icon: <Shield className="w-4 h-4" />,
-    label: `${terms.capitalProtectionPct}% Capital Protection`,
-    color: 'purple' as const,
-  });
+  // Only show capital protection badge if > 0%
+  if (terms.capitalProtectionPct > 0) {
+    badges.push({
+      icon: <Shield className="w-4 h-4" />,
+      label: `${terms.capitalProtectionPct}% Protected`,
+      color: 'purple' as const,
+    });
+  }
+
   badges.push({
     icon: <BadgePercent className="w-4 h-4" />,
     label: `${terms.participationRatePct}% Participation`,
     color: 'blue' as const,
   });
 
+  badges.push({
+    icon: <BadgePercent className="w-4 h-4" />,
+    label: `Starts at ${terms.participationStartPct}%`,
+    color: 'teal' as const,
+  });
+
+  if (terms.capType === 'capped' && terms.capLevelPct) {
+    badges.push({
+      icon: <BadgePercent className="w-4 h-4" />,
+      label: `Cap: ${terms.capLevelPct}%`,
+      color: 'orange' as const,
+    });
+  } else {
+    badges.push({
+      icon: <BadgePercent className="w-4 h-4" />,
+      label: 'No Cap',
+      color: 'orange' as const,
+    });
+  }
+
+  if (terms.knockInEnabled) {
+    badges.push({
+      icon: <Shield className="w-4 h-4" />,
+      label: `KI: ${terms.knockInLevelPct}%`,
+      color: 'purple' as const,
+    });
+  } else {
+    badges.push({
+      icon: <Shield className="w-4 h-4" />,
+      label: 'KI: Off',
+      color: 'purple' as const,
+    });
+  }
+
   const specs = [
-    { label: 'Capital Protection', value: `${terms.capitalProtectionPct}%` },
+    ...(terms.capitalProtectionPct > 0 ? [{ label: 'Capital Protection', value: `${terms.capitalProtectionPct}%` }] : []),
     { label: 'Participation Starts At', value: `${terms.participationStartPct}%` },
     { label: 'Direction', value: terms.participationDirection === 'up' ? 'Upside Participation' : 'Downside Participation' },
     { label: 'Cap', value: terms.capType === 'capped' ? `${terms.capLevelPct}%` : 'None' },
@@ -61,6 +99,11 @@ export function CppnProductSummary({ terms }: { terms: CapitalProtectedParticipa
   }
 
   if (terms.bonusEnabled) {
+    badges.push({
+      icon: <BadgePercent className="w-4 h-4" />,
+      label: `🎁 Bonus: ${terms.bonusLevelPct}%`,
+      color: 'purple' as const,
+    });
     specs.push({ label: '🎁 Bonus Level', value: `${terms.bonusLevelPct}%` });
     specs.push({ label: '🎁 Bonus Barrier', value: `${terms.bonusBarrierPct}%` });
   }

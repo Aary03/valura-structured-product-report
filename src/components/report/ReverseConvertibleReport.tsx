@@ -141,7 +141,7 @@ export function ReverseConvertibleReport({ reportData }: ReverseConvertibleRepor
             <CompanyDescriptions 
               summaries={summaries} 
               productType="RC"
-              barrierPct={terms.barrier}
+              barrierPct={barrierLevel}
             />
           )}
 
