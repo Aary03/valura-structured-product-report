@@ -101,6 +101,25 @@ export function PdfCapitalProtectedParticipationReport({
 
   const payoffAt = (X: number) => {
     // Match engine math for the report table
+    // BONUS CERTIFICATE LOGIC
+    if (terms.bonusEnabled && terms.bonusLevelPct && terms.bonusBarrierPct) {
+      const barrierBreached = X < terms.bonusBarrierPct;
+      if (barrierBreached) {
+        // Barrier breached: 1:1 with underlying
+        return 100 * (X / 100); // R = X/100, so 100*R = X
+      } else {
+        // Barrier not breached: bonus floor + participation
+        const K = terms.participationStartPct;
+        const R = X / 100;
+        const P = 100 + 100 * a * Math.max(0, R - (K / 100));
+        const P_capped = terms.capType === 'capped' && terms.capLevelPct 
+          ? Math.min(P, terms.capLevelPct)
+          : P;
+        return Math.max(terms.bonusLevelPct, P_capped);
+      }
+    }
+    
+    // STANDARD CPPN LOGIC
     if (terms.knockInEnabled && typeof terms.knockInLevelPct === 'number' && X < terms.knockInLevelPct) {
       const S = terms.downsideStrikePct ?? terms.knockInLevelPct;
       return (100 * X) / S;
@@ -153,46 +172,93 @@ export function PdfCapitalProtectedParticipationReport({
             </div>
 
             <div style={{ marginTop: 6 }}>
-              <div className="pdf-product-title">Capital Protected Participation Note</div>
-              <div className="pdf-product-rate">{terms.capitalProtectionPct}% protected floor</div>
+              <div className="pdf-product-title">
+                {terms.bonusEnabled ? 'Bonus Certificate' : 'Capital Protected Participation Note'}
+              </div>
+              <div className="pdf-product-rate">
+                {terms.bonusEnabled 
+                  ? `Bonus: ${terms.bonusLevelPct}% if barrier (${terms.bonusBarrierPct}%) not breached`
+                  : `${terms.capitalProtectionPct}% protected floor`}
+              </div>
             </div>
 
             <div className="pdf-chip-row">
               <span className="pdf-chip"><span className="muted">{terms.currency}</span></span>
               <span className="pdf-chip"><span className="muted">{terms.tenorMonths}M</span> Tenor</span>
               <span className="pdf-chip"><span className="muted">{terms.basketType}</span> Basket</span>
-              <span className="pdf-chip"><span className="muted">{terms.participationRatePct}%</span> Participation</span>
-              <span className="pdf-chip"><span className="muted">{terms.participationStartPct}%</span> Starts at</span>
-              <span className="pdf-chip"><span className="muted">{capLabel}</span> Cap</span>
-              <span className="pdf-chip"><span className="muted">{kiLabel}</span> KI</span>
-              <span className="pdf-chip"><span className="muted">{sLabel}</span> S</span>
+              {terms.bonusEnabled ? (
+                <>
+                  <span className="pdf-chip"><span className="muted">{terms.bonusLevelPct}%</span> Bonus</span>
+                  <span className="pdf-chip"><span className="muted">{terms.bonusBarrierPct}%</span> Barrier</span>
+                  <span className="pdf-chip"><span className="muted">{terms.participationStartPct}%</span> Strike</span>
+                  <span className="pdf-chip"><span className="muted">{terms.participationRatePct}%</span> Participation</span>
+                  <span className="pdf-chip"><span className="muted">{capLabel}</span> Cap</span>
+                </>
+              ) : (
+                <>
+                  <span className="pdf-chip"><span className="muted">{terms.participationRatePct}%</span> Participation</span>
+                  <span className="pdf-chip"><span className="muted">{terms.participationStartPct}%</span> Starts at</span>
+                  <span className="pdf-chip"><span className="muted">{capLabel}</span> Cap</span>
+                  <span className="pdf-chip"><span className="muted">{kiLabel}</span> KI</span>
+                  <span className="pdf-chip"><span className="muted">{sLabel}</span> S</span>
+                </>
+              )}
             </div>
 
             <div className="pdf-spec-grid">
-              <div className="pdf-spec-item">
-                <div className="k">Capital protection</div>
-                <div className="v">{terms.capitalProtectionPct}%</div>
-              </div>
-              <div className="pdf-spec-item">
-                <div className="k">Participation rate</div>
-                <div className="v">{terms.participationRatePct}%</div>
-              </div>
-              <div className="pdf-spec-item">
-                <div className="k">Participation starts</div>
-                <div className="v">{terms.participationStartPct}%</div>
-              </div>
-              <div className="pdf-spec-item">
-                <div className="k">Direction</div>
-                <div className="v">{terms.participationDirection === 'up' ? 'Upside' : 'Downside'}</div>
-              </div>
-              <div className="pdf-spec-item">
-                <div className="k">Cap</div>
-                <div className="v">{capLabel}</div>
-              </div>
-              <div className="pdf-spec-item">
-                <div className="k">Knock-in</div>
-                <div className="v">{kiLabel}</div>
-              </div>
+              {terms.bonusEnabled ? (
+                <>
+                  <div className="pdf-spec-item">
+                    <div className="k">Bonus Level</div>
+                    <div className="v">{terms.bonusLevelPct}%</div>
+                  </div>
+                  <div className="pdf-spec-item">
+                    <div className="k">Bonus Barrier</div>
+                    <div className="v">{terms.bonusBarrierPct}%</div>
+                  </div>
+                  <div className="pdf-spec-item">
+                    <div className="k">Strike</div>
+                    <div className="v">{terms.participationStartPct}%</div>
+                  </div>
+                  <div className="pdf-spec-item">
+                    <div className="k">Participation Rate</div>
+                    <div className="v">{terms.participationRatePct}%</div>
+                  </div>
+                  <div className="pdf-spec-item">
+                    <div className="k">Cap</div>
+                    <div className="v">{capLabel}</div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {terms.capitalProtectionPct > 0 && (
+                    <div className="pdf-spec-item">
+                      <div className="k">Capital protection</div>
+                      <div className="v">{terms.capitalProtectionPct}%</div>
+                    </div>
+                  )}
+                  <div className="pdf-spec-item">
+                    <div className="k">Participation rate</div>
+                    <div className="v">{terms.participationRatePct}%</div>
+                  </div>
+                  <div className="pdf-spec-item">
+                    <div className="k">Participation starts</div>
+                    <div className="v">{terms.participationStartPct}%</div>
+                  </div>
+                  <div className="pdf-spec-item">
+                    <div className="k">Direction</div>
+                    <div className="v">{terms.participationDirection === 'up' ? 'Upside' : 'Downside'}</div>
+                  </div>
+                  <div className="pdf-spec-item">
+                    <div className="k">Cap</div>
+                    <div className="v">{capLabel}</div>
+                  </div>
+                  <div className="pdf-spec-item">
+                    <div className="k">Knock-in</div>
+                    <div className="v">{kiLabel}</div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -273,15 +339,32 @@ export function PdfCapitalProtectedParticipationReport({
                 <span className="pdf-pill good">Good fit</span>
               </div>
               <div className="pdf-mini pdf-muted">
-                <div>• You want a protected floor with defined participation</div>
-                <div>• You can hold to maturity</div>
-                <div>• You accept issuer credit risk</div>
+                {terms.bonusEnabled ? (
+                  <>
+                    <div>• You want bonus return if barrier not breached</div>
+                    <div>• You can hold to maturity</div>
+                    <div>• You accept downside risk if barrier breached</div>
+                  </>
+                ) : (
+                  <>
+                    <div>• You want a protected floor with defined participation</div>
+                    <div>• You can hold to maturity</div>
+                    <div>• You accept issuer credit risk</div>
+                  </>
+                )}
               </div>
             </div>
             <div className="pdf-card avoid-break" style={{ borderColor: 'rgba(245,158,11,0.35)', background: 'rgba(245,158,11,0.08)' }}>
               <div className="pdf-section-title" style={{ marginBottom: 4 }}>Break-even / Minimum</div>
               <div className="pdf-mini pdf-muted">
-                {terms.capitalProtectionPct >= 100 ? (
+                {terms.bonusEnabled ? (
+                  <>
+                    Bonus: <b style={{ color: 'var(--pdf-ink)' }}>{formatNumber(terms.bonusLevelPct, 0)}%</b> if barrier ({formatNumber(terms.bonusBarrierPct, 0)}%) never breached
+                    <div style={{ marginTop: 6 }}>
+                      If barrier breached: payoff follows underlying performance (1:1).
+                    </div>
+                  </>
+                ) : terms.capitalProtectionPct >= 100 ? (
                   <>
                     Minimum redemption: <b style={{ color: 'var(--pdf-ink)' }}>{formatNumber(terms.capitalProtectionPct, 0)}%</b>
                     <div style={{ marginTop: 6 }}>
@@ -293,7 +376,7 @@ export function PdfCapitalProtectedParticipationReport({
                     See web report for detailed breakeven (P &lt; 100).
                   </>
                 )}
-                {terms.knockInEnabled && (
+                {!terms.bonusEnabled && terms.knockInEnabled && (
                   <div style={{ marginTop: 6 }}>
                     Knock-in: if X &lt; <b style={{ color: 'var(--pdf-ink)' }}>{formatNumber(terms.knockInLevelPct ?? 0, 0)}%</b>, payoff switches to <span className="pdf-mono">100·(X/S)</span>.
                   </div>
@@ -363,13 +446,28 @@ export function PdfCapitalProtectedParticipationReport({
               <div className="pdf-card pdf-card--inner avoid-break" style={{ padding: 10, borderColor: 'rgba(79,70,229,0.22)', background: 'rgba(79,70,229,0.06)' }}>
                 <div className="pdf-section-title" style={{ marginBottom: 4 }}>Formula</div>
                 <div className="pdf-mini pdf-muted">
-                  Protected regime: <span className="pdf-mono">max(P, P + a·max(0, ±(X−K)))</span>
-                  {terms.capType === 'capped' && <> (capped)</>}
-                  {terms.knockInEnabled && (
+                  {terms.bonusEnabled ? (
                     <>
-                      <div style={{ marginTop: 6 }}>
-                        If <b>X &lt; KI</b>: <span className="pdf-mono">100·(X/S)</span>
+                      If barrier ({formatNumber(terms.bonusBarrierPct, 0)}%) <b>not breached</b>:
+                      <div style={{ marginTop: 4 }}>
+                        <span className="pdf-mono">RED = max(BL, 100 + 100·a·max(0, X−K))</span>
+                        {terms.capType === 'capped' && <> (capped at {formatNumber(terms.capLevelPct, 0)}%)</>}
                       </div>
+                      <div style={{ marginTop: 6 }}>
+                        If barrier <b>breached</b>: <span className="pdf-mono">RED = 100·R</span> (1:1 with underlying)
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      Protected regime: <span className="pdf-mono">max(P, P + a·max(0, ±(X−K)))</span>
+                      {terms.capType === 'capped' && <> (capped)</>}
+                      {terms.knockInEnabled && (
+                        <>
+                          <div style={{ marginTop: 6 }}>
+                            If <b>X &lt; KI</b>: <span className="pdf-mono">100·(X/S)</span>
+                          </div>
+                        </>
+                      )}
                     </>
                   )}
                 </div>
@@ -501,32 +599,61 @@ export function PdfCapitalProtectedParticipationReport({
           <div className="pdf-card avoid-break">
             <div className="pdf-section-title">Understand the scenarios</div>
             <div className="pdf-grid-2-eq">
-              <div className="pdf-card pdf-card--inner" style={{ padding: 10, borderColor: 'rgba(16,185,129,0.35)', background: 'rgba(16,185,129,0.06)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <b style={{ color: 'var(--pdf-ink)' }}>Protected outcome</b>
-                  <span className="pdf-pill good">P</span>
-                </div>
-                <div className="pdf-mini pdf-muted">
-                  <div>• Minimum redemption: {formatNumber(terms.capitalProtectionPct, 0)}%</div>
-                  <div>• Participation starts at K = {formatNumber(terms.participationStartPct, 0)}%</div>
-                  {terms.knockInEnabled && (
-                    <div style={{ marginTop: 6, color: 'var(--pdf-faint)' }}>
-                      If X &lt; KI ({formatNumber(terms.knockInLevelPct ?? 0, 0)}%), switches to 100·(X/S)
+              {terms.bonusEnabled ? (
+                <>
+                  <div className="pdf-card pdf-card--inner" style={{ padding: 10, borderColor: 'rgba(16,185,129,0.35)', background: 'rgba(16,185,129,0.06)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <b style={{ color: 'var(--pdf-ink)' }}>Bonus outcome</b>
+                      <span className="pdf-pill good">BL</span>
                     </div>
-                  )}
-                </div>
-              </div>
-              <div className="pdf-card pdf-card--inner" style={{ padding: 10, borderColor: 'rgba(79,70,229,0.30)', background: 'rgba(79,70,229,0.06)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <b style={{ color: 'var(--pdf-ink)' }}>Participating outcome</b>
-                  <span className="pdf-pill">α</span>
-                </div>
-                <div className="pdf-mini pdf-muted">
-                  <div>• Payoff% = max(P, P + a·max(0, ±(X−K)))</div>
-                  <div>• Direction: {terms.participationDirection === 'up' ? 'Upside' : 'Downside'}</div>
-                  <div>• Cap: {capLabel}</div>
-                </div>
-              </div>
+                    <div className="pdf-mini pdf-muted">
+                      <div>• Bonus: {formatNumber(terms.bonusLevelPct, 0)}% if barrier ({formatNumber(terms.bonusBarrierPct, 0)}%) not breached</div>
+                      <div>• Participation: {formatNumber(terms.participationRatePct, 0)}% from strike K = {formatNumber(terms.participationStartPct, 0)}%</div>
+                      <div>• Cap: {capLabel}</div>
+                    </div>
+                  </div>
+                  <div className="pdf-card pdf-card--inner" style={{ padding: 10, borderColor: 'rgba(239,68,68,0.35)', background: 'rgba(239,68,68,0.06)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <b style={{ color: 'var(--pdf-ink)' }}>Barrier breached</b>
+                      <span className="pdf-pill bad">1:1</span>
+                    </div>
+                    <div className="pdf-mini pdf-muted">
+                      <div>• If barrier ({formatNumber(terms.bonusBarrierPct, 0)}%) breached: payoff = 100·R</div>
+                      <div>• No bonus protection</div>
+                      <div>• Follows underlying performance (1:1)</div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="pdf-card pdf-card--inner" style={{ padding: 10, borderColor: 'rgba(16,185,129,0.35)', background: 'rgba(16,185,129,0.06)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <b style={{ color: 'var(--pdf-ink)' }}>Protected outcome</b>
+                      <span className="pdf-pill good">P</span>
+                    </div>
+                    <div className="pdf-mini pdf-muted">
+                      <div>• Minimum redemption: {formatNumber(terms.capitalProtectionPct, 0)}%</div>
+                      <div>• Participation starts at K = {formatNumber(terms.participationStartPct, 0)}%</div>
+                      {terms.knockInEnabled && (
+                        <div style={{ marginTop: 6, color: 'var(--pdf-faint)' }}>
+                          If X &lt; KI ({formatNumber(terms.knockInLevelPct ?? 0, 0)}%), switches to 100·(X/S)
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="pdf-card pdf-card--inner" style={{ padding: 10, borderColor: 'rgba(79,70,229,0.30)', background: 'rgba(79,70,229,0.06)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <b style={{ color: 'var(--pdf-ink)' }}>Participating outcome</b>
+                      <span className="pdf-pill">α</span>
+                    </div>
+                    <div className="pdf-mini pdf-muted">
+                      <div>• Payoff% = max(P, P + a·max(0, ±(X−K)))</div>
+                      <div>• Direction: {terms.participationDirection === 'up' ? 'Upside' : 'Downside'}</div>
+                      <div>• Cap: {capLabel}</div>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -535,9 +662,20 @@ export function PdfCapitalProtectedParticipationReport({
           <div className="pdf-card avoid-break">
             <div className="pdf-section-title">Risks (short)</div>
             <div className="pdf-mini pdf-muted">
-              <div>• Issuer credit risk: “capital protection” depends on issuer ability to pay.</div>
-              <div>• Liquidity risk: secondary market price may be below notional before maturity.</div>
-              <div>• Knock-in (if enabled) can increase downside exposure at maturity.</div>
+              {terms.bonusEnabled ? (
+                <>
+                  <div>• Barrier risk: if barrier ({formatNumber(terms.bonusBarrierPct, 0)}%) breached, bonus protection is lost.</div>
+                  <div>• Downside exposure: if barrier breached, payoff follows underlying (1:1), potential for loss.</div>
+                  <div>• Liquidity risk: secondary market price may be below notional before maturity.</div>
+                  <div>• Issuer credit risk: depends on issuer ability to pay at maturity.</div>
+                </>
+              ) : (
+                <>
+                  <div>• Issuer credit risk: "capital protection" depends on issuer ability to pay.</div>
+                  <div>• Liquidity risk: secondary market price may be below notional before maturity.</div>
+                  <div>• Knock-in (if enabled) can increase downside exposure at maturity.</div>
+                </>
+              )}
             </div>
             <div style={{ marginTop: 8, fontSize: 9.5, color: 'var(--pdf-faint)' }}>
               Indicative terms • Not an offer • For information only
