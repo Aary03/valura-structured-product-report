@@ -5,7 +5,7 @@
 
 import type { CapitalProtectedParticipationTerms } from '../../products/capitalProtectedParticipation/terms';
 import { KpiTile } from '../common/KpiTile';
-import { Shield, TrendingUp, Layers } from 'lucide-react';
+import { Shield, TrendingUp, Layers, BadgePercent } from 'lucide-react';
 import { getLogoWithFallback } from '../../utils/logo';
 
 interface CppnHeroHeaderProps {
@@ -67,7 +67,7 @@ export function CppnHeroHeader({ terms }: CppnHeroHeaderProps) {
             </div>
             <div className="flex-1">
               <h1 className="text-5xl font-bold text-valura-ink">
-                Capital Protected Participation Note
+                {terms.bonusEnabled ? 'Bonus Certificate' : 'Capital Protected Participation Note'}
                 {terms.basketType !== 'single' && (
                   <span className="text-2xl text-text-secondary ml-3">
                     ({basketLabel})
@@ -77,7 +77,9 @@ export function CppnHeroHeader({ terms }: CppnHeroHeaderProps) {
             </div>
           </div>
           <p className="text-text-secondary text-xl">
-            Principal Protected + {terms.participationDirection === 'up' ? 'Upside' : 'Downside'} Participation
+            {terms.bonusEnabled 
+              ? `Bonus: ${terms.bonusLevelPct}% if barrier (${terms.bonusBarrierPct}%) never breached`
+              : `Principal Protected + ${terms.participationDirection === 'up' ? 'Upside' : 'Downside'} Participation`}
           </p>
         </div>
 
@@ -126,45 +128,91 @@ export function CppnHeroHeader({ terms }: CppnHeroHeaderProps) {
               <span className="opacity-90">Currency:</span>
               <span className="font-semibold">{terms.currency}</span>
             </div>
-            {terms.capitalProtectionPct > 0 && (
-              <div className="flex items-center justify-between">
-                <span className="opacity-90">Protection:</span>
-                <span className="font-semibold">{terms.capitalProtectionPct}%</span>
-              </div>
-            )}
-            <div className="flex items-center justify-between">
-              <span className="opacity-90">Participation:</span>
-              <span className="font-semibold">{terms.participationRatePct}% @ {terms.participationStartPct}%</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="opacity-90">Cap:</span>
-              <span className="font-semibold">{terms.capType === 'capped' ? `${terms.capLevelPct}%` : 'None'}</span>
-            </div>
-            {terms.knockInEnabled && (
-              <div className="flex items-center justify-between">
-                <span className="opacity-90">Knock-In:</span>
-                <span className="font-semibold text-xs">{terms.knockInLevelPct}%</span>
-              </div>
+            {terms.bonusEnabled ? (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="opacity-90">Bonus Level:</span>
+                  <span className="font-semibold">{terms.bonusLevelPct}%</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="opacity-90">Bonus Barrier:</span>
+                  <span className="font-semibold">{terms.bonusBarrierPct}%</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="opacity-90">Strike:</span>
+                  <span className="font-semibold">{terms.participationStartPct}%</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="opacity-90">Participation:</span>
+                  <span className="font-semibold">{terms.participationRatePct}%</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="opacity-90">Cap:</span>
+                  <span className="font-semibold">{terms.capType === 'capped' ? `${terms.capLevelPct}%` : 'None'}</span>
+                </div>
+              </>
+            ) : (
+              <>
+                {terms.capitalProtectionPct > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="opacity-90">Protection:</span>
+                    <span className="font-semibold">{terms.capitalProtectionPct}%</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <span className="opacity-90">Participation:</span>
+                  <span className="font-semibold">{terms.participationRatePct}% @ {terms.participationStartPct}%</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="opacity-90">Cap:</span>
+                  <span className="font-semibold">{terms.capType === 'capped' ? `${terms.capLevelPct}%` : 'None'}</span>
+                </div>
+                {terms.knockInEnabled && (
+                  <div className="flex items-center justify-between">
+                    <span className="opacity-90">Knock-In:</span>
+                    <span className="font-semibold text-xs">{terms.knockInLevelPct}%</span>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {terms.capitalProtectionPct > 0 && (
-          <KpiTile
-            icon={<Shield className="w-5 h-5" />}
-            value={`${terms.capitalProtectionPct}%`}
-            subtitle="Capital Protection"
-            gradient="primary"
-          />
+        {terms.bonusEnabled ? (
+          <>
+            <KpiTile
+              icon={<BadgePercent className="w-5 h-5" />}
+              value={`${terms.bonusLevelPct}%`}
+              subtitle="Bonus Level"
+              gradient="primary"
+            />
+            <KpiTile
+              icon={<Shield className="w-5 h-5" />}
+              value={`${terms.bonusBarrierPct}%`}
+              subtitle="Bonus Barrier"
+              gradient="success"
+            />
+          </>
+        ) : (
+          <>
+            {terms.capitalProtectionPct > 0 && (
+              <KpiTile
+                icon={<Shield className="w-5 h-5" />}
+                value={`${terms.capitalProtectionPct}%`}
+                subtitle="Capital Protection"
+                gradient="primary"
+              />
+            )}
+            <KpiTile
+              icon={<TrendingUp className="w-5 h-5" />}
+              value={`${terms.participationRatePct}%`}
+              subtitle="Participation Rate"
+              gradient="success"
+            />
+          </>
         )}
-        <KpiTile
-          icon={<TrendingUp className="w-5 h-5" />}
-          value={`${terms.participationRatePct}%`}
-          subtitle="Participation Rate"
-          gradient="success"
-        />
       </div>
 
       {terms.basketType !== 'single' && (
