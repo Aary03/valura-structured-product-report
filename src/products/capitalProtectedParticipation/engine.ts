@@ -117,6 +117,17 @@ export function computeCppnPayoffPct(
       // Participation payoff: P = 100 + 100*part*max(R - start, 0)
       const start = PS / 100;
       const part = PR / 100;
+      
+      // If X < PS (participation start), payoff should be flat at bonus level
+      if (X < PS) {
+        return {
+          redemptionPct: Math.max(0, BL) / 100, // Flat at bonus level until participation starts
+          knockInTriggered: false,
+          bonusPaid: true,
+        };
+      }
+      
+      // Participation starts at PS
       const P = 100 + 100 * part * Math.max(R - start, 0);
       
       // Apply cap
