@@ -6,7 +6,7 @@
 import type { ReverseConvertibleTerms } from '../../products/reverseConvertible/terms';
 import { formatPercent } from '../../core/utils/math';
 import { CardShell } from '../common/CardShell';
-import { DollarSign, Shield, AlertTriangle } from 'lucide-react';
+import { DollarSign, Shield } from 'lucide-react';
 
 interface OneMinuteSummaryProps {
   terms: ReverseConvertibleTerms;
@@ -52,18 +52,6 @@ export function OneMinuteSummary({ terms, timestamp }: OneMinuteSummaryProps) {
             <div className="font-semibold text-text-primary mb-1">Principal:</div>
             <div className="text-text-secondary">
               100% returned if the <span className="font-semibold italic">{basketLabel}</span> is ≥ {barrierPct} of its reference price at maturity
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-start space-x-4">
-          <div className="flex-shrink-0 mt-1">
-            <AlertTriangle className="w-6 h-6 text-warning" />
-          </div>
-          <div>
-            <div className="font-semibold text-text-primary mb-1">Risk:</div>
-            <div className="text-text-secondary">
-              If below {barrierPct} at maturity, you receive shares of the {basketLabel} → you can lose money
             </div>
           </div>
         </div>

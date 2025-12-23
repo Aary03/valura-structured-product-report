@@ -194,7 +194,7 @@ export function PdfReverseConvertibleReport({ reportData }: { reportData: Revers
             </div>
 
             <div className="pdf-chip-row">
-              {underlyingData.slice(0, 1).map((u) => {
+              {underlyingData.map((u) => {
                 const { logoUrl, fallback } = getLogoWithFallback(u.symbol, u.name);
                 return (
                   <span key={u.symbol} className="pdf-chip">
@@ -225,6 +225,11 @@ export function PdfReverseConvertibleReport({ reportData }: { reportData: Revers
               <span className="pdf-chip">
                 <span className="muted">{formatPercent(computed.triggerPct, 0)}</span> {computed.triggerLabel}
               </span>
+              {terms.autocallEnabled && (
+                <span className="pdf-chip">
+                  <span className="muted">Autocall</span> Yes @ {formatPercent(terms.autocallLevelPct || 1.0, 0)}
+                </span>
+              )}
             </div>
 
             <div className="pdf-spec-grid">
@@ -438,7 +443,7 @@ export function PdfReverseConvertibleReport({ reportData }: { reportData: Revers
                 const endDot = spark ? spark.coords[spark.coords.length - 1] : null;
 
                 return (
-                  <div key={s.symbol} className="pdf-underlying-card pdf-spotlight-card">
+                  <div key={s.symbol} className="pdf-underlying-card pdf-spotlight-card avoid-break">
                     <div className="pdf-underlying-head">
                       <div className="pdf-underlying-left">
                         <div className="pdf-logo">
@@ -459,7 +464,6 @@ export function PdfReverseConvertibleReport({ reportData }: { reportData: Revers
                       </div>
                       <div className="pdf-spotlight-badges">
                         {s.analystConsensus && <span className="pdf-pill">{s.analystConsensus}</span>}
-                        {s.riskBadge && <span className={`pdf-pill ${s.riskBadge === 'Low' ? 'good' : s.riskBadge === 'High' ? 'bad' : ''}`}>Risk: {s.riskBadge}</span>}
                         <span className={`pdf-pill ${perfTone}`}>
                           {s.performancePct >= 0 ? '▲' : '▼'} {formatNumber(Math.abs(s.performancePct), 1)}%
                         </span>
@@ -517,6 +521,19 @@ export function PdfReverseConvertibleReport({ reportData }: { reportData: Revers
                           Latest: <b style={{ color: 'var(--pdf-ink)' }}>{spark ? `${formatNumber(spark.last, 0)}%` : '—'}</b>
                         </div>
                       </div>
+
+                      {/* Company Description - AI Summary */}
+                      {(s.descriptionSummary || s.description) && (
+                        <div className="pdf-company-description">
+                          <div className="pdf-description-header">
+                            <b>About {s.symbol}</b>
+                            {s.ceo && <span style={{ marginLeft: 8 }}>• CEO: {s.ceo}</span>}
+                          </div>
+                          <div className="pdf-description-text">
+                            {s.descriptionSummary || s.description}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -551,5 +568,7 @@ export function PdfReverseConvertibleReport({ reportData }: { reportData: Revers
     </div>
   );
 }
+
+
 
 

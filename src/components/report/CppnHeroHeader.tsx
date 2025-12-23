@@ -82,17 +82,69 @@ export function CppnHeroHeader({ terms }: CppnHeroHeaderProps) {
         </div>
 
         <div
-          className="flex-shrink-0 ml-4 px-5 py-3 rounded-lg font-bold text-base text-white"
+          className="flex-shrink-0 ml-4 px-6 py-4 rounded-xl font-bold text-base text-white space-y-2"
           style={{
             background: 'linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-blue-light) 100%)',
             boxShadow: 'var(--shadow-button)',
+            minWidth: '280px',
           }}
         >
-          <div className="text-sm font-normal mb-1 opacity-95">Key Features</div>
-          <div className="text-base font-semibold">
-            {terms.tenorMonths}M • {terms.currency} • Starts: {terms.participationStartPct}% • {capText}
+          <div className="text-sm font-normal opacity-95">Product Details</div>
+          
+          {/* Underlying Chips Row */}
+          <div className="flex flex-wrap gap-1.5">
+            {terms.underlyings.map((u, idx) => {
+              const { logoUrl, fallback } = getLogoWithFallback(u.ticker, u.name);
+              return (
+                <div
+                  key={idx}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/20 backdrop-blur-sm border border-white/30"
+                  style={{ fontSize: '13px' }}
+                >
+                  <img
+                    src={logoUrl}
+                    alt={u.ticker}
+                    className="w-4 h-4 rounded object-contain bg-white"
+                    onError={(e) => {
+                      const img = e.target as HTMLImageElement;
+                      img.style.display = 'none';
+                    }}
+                  />
+                  <span className="font-semibold">{u.ticker}</span>
+                </div>
+              );
+            })}
           </div>
-          <div className="text-sm font-normal mt-1 opacity-95">{kiText}</div>
+
+          {/* Key Info */}
+          <div className="space-y-1 text-sm font-medium">
+            <div className="flex items-center justify-between">
+              <span className="opacity-90">Duration:</span>
+              <span className="font-semibold">{terms.tenorMonths}M</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="opacity-90">Currency:</span>
+              <span className="font-semibold">{terms.currency}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="opacity-90">Protection:</span>
+              <span className="font-semibold">{terms.capitalProtectionPct}%</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="opacity-90">Participation:</span>
+              <span className="font-semibold">{terms.participationRatePct}% @ {terms.participationStartPct}%</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="opacity-90">Cap:</span>
+              <span className="font-semibold">{terms.capType === 'capped' ? `${terms.capLevelPct}%` : 'None'}</span>
+            </div>
+            {terms.knockInEnabled && (
+              <div className="flex items-center justify-between">
+                <span className="opacity-90">Knock-In:</span>
+                <span className="font-semibold text-xs">{terms.knockInLevelPct}%</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -126,5 +178,7 @@ export function CppnHeroHeader({ terms }: CppnHeroHeaderProps) {
     </div>
   );
 }
+
+
 
 

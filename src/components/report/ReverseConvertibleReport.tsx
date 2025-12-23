@@ -11,6 +11,7 @@ import { ProductSummary } from './ProductSummary';
 import { SuitabilitySection } from './SuitabilitySection';
 import { UnderlyingsTable } from './UnderlyingsTable';
 import { UnderlyingsSpotlight } from './UnderlyingsSpotlight';
+import { CompanyDescriptions } from './CompanyDescriptions';
 import { PayoffGraph } from './PayoffGraph';
 import { PerformanceGraph } from './PerformanceGraph';
 import { OutcomeExamples } from './OutcomeExamples';
@@ -25,6 +26,7 @@ import { addMonths, getCurrentISODate } from '../../core/types/dates';
 import { Download } from 'lucide-react';
 import { downloadReportPDFServer } from '../../utils/pdfExport';
 import { useState } from 'react';
+import type { UnderlyingSummary } from '../../services/underlyingSummary';
 
 interface ReverseConvertibleReportProps {
   reportData: ReverseConvertibleReportData;
@@ -33,6 +35,7 @@ interface ReverseConvertibleReportProps {
 export function ReverseConvertibleReport({ reportData }: ReverseConvertibleReportProps) {
   const { terms, underlyingData, historicalData, curvePoints, intrinsicValue, barrierLevel, strikeLevel, documentId, generatedDate } = reportData;
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [summaries, setSummaries] = useState<UnderlyingSummary[]>([]);
 
   // Calculate current worst-of level (or single level)
   const currentLevel = reportData.worstOfLevel || 
@@ -130,7 +133,17 @@ export function ReverseConvertibleReport({ reportData }: ReverseConvertibleRepor
             historicalData={historicalData}
             terms={terms}
             worstUnderlyingIndex={reportData.worstUnderlyingIndex}
+            onSummariesLoaded={setSummaries}
           />
+
+          {/* Company Backgrounds - Full Width */}
+          {summaries.length > 0 && (
+            <CompanyDescriptions 
+              summaries={summaries} 
+              productType="RC"
+              barrierPct={terms.barrier}
+            />
+          )}
 
           {/* Ticker News Sections */}
           <div className="space-y-4">

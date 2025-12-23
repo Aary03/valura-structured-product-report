@@ -44,6 +44,9 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
     strikePct: '55', // Percentage
     knockInBarrierPct: '',
     conversionRatio: '1.0',
+    autocallEnabled: false,
+    autocallLevelPct: '100', // Percentage
+    autocallFrequency: '', // Default: same as coupon frequency
   });
 
   type CppnFormState = {
@@ -222,6 +225,15 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
         if (rcFormData.knockInBarrierPct) {
           terms.knockInBarrierPct = parseFloat(rcFormData.knockInBarrierPct) / 100;
         }
+      }
+
+      // Add autocall terms if enabled
+      if (rcFormData.autocallEnabled) {
+        terms.autocallEnabled = true;
+        terms.autocallLevelPct = parseFloat(rcFormData.autocallLevelPct) / 100;
+        terms.autocallFrequency = rcFormData.autocallFrequency 
+          ? frequencyFromString(rcFormData.autocallFrequency)
+          : terms.couponFreqPerYear; // Default to coupon frequency
       }
 
       const validation = validateReverseConvertibleTerms(terms);
@@ -532,6 +544,61 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
                     <option value="annual">Annual</option>
                   </select>
                 </div>
+              </div>
+
+              {/* Autocall Section */}
+              <div className="section-card mt-6">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="section-title">Autocall Feature (Optional)</h3>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={rcFormData.autocallEnabled}
+                      onChange={(e) => handleRcChange('autocallEnabled', String(e.target.checked))}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm font-medium">Enable Autocall</span>
+                  </label>
+                </div>
+
+                {rcFormData.autocallEnabled && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="label">Autocall Level (%)</label>
+                      <input
+                        type="number"
+                        className="input-field"
+                        value={rcFormData.autocallLevelPct}
+                        onChange={(e) => handleRcChange('autocallLevelPct', e.target.value)}
+                        placeholder="100"
+                        min="0"
+                        max="200"
+                        step="1"
+                      />
+                      <p className="text-text-secondary text-xs mt-1">
+                        Level at which the product autocalls (typically 100%)
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="label">Autocall Frequency</label>
+                      <select
+                        className="input-field"
+                        value={rcFormData.autocallFrequency}
+                        onChange={(e) => handleRcChange('autocallFrequency', e.target.value)}
+                      >
+                        <option value="">Same as Coupon Frequency</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="quarterly">Quarterly</option>
+                        <option value="semi-annual">Semi-Annual</option>
+                        <option value="annual">Annual</option>
+                      </select>
+                      <p className="text-text-secondary text-xs mt-1">
+                        How often autocall is observed (defaults to coupon frequency)
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

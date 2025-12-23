@@ -7,8 +7,9 @@
 import type { ReverseConvertibleTerms } from '../../products/reverseConvertible/terms';
 import { formatPercent } from '../../core/utils/math';
 import { KpiTile } from '../common/KpiTile';
-import { TrendingUp, Shield, AlertTriangle, TrendingDown, Layers } from 'lucide-react';
+import { TrendingUp, Shield, AlertTriangle, TrendingDown, Layers, Calendar } from 'lucide-react';
 import { getLogoWithFallback } from '../../utils/logo';
+import { addMonths, getCurrentISODate } from '../../core/types/dates';
 
 interface HeroHeaderProps {
   terms: ReverseConvertibleTerms;
@@ -38,6 +39,16 @@ export function HeroHeader({
       ? `Barrier: ${formatPercent(terms.barrierPct || 0, 0)}`
       : `Strike: ${formatPercent(terms.strikePct || 0, 0)}`;
 
+  // Calculate first observation date based on coupon frequency
+  const getFirstObservationDate = () => {
+    const monthsToFirst = 12 / terms.couponFreqPerYear;
+    const firstObservation = addMonths(getCurrentISODate(), monthsToFirst);
+    return new Date(firstObservation).toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
 
   return (
     <div>
@@ -99,15 +110,66 @@ export function HeroHeader({
           <p className="text-text-secondary text-xl">{variantLabel}</p>
         </div>
         <div 
-          className="flex-shrink-0 ml-4 px-5 py-3 rounded-lg font-bold text-base text-white"
+          className="flex-shrink-0 ml-4 px-6 py-4 rounded-xl font-bold text-base text-white space-y-2"
           style={{ 
             background: 'linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-blue-light) 100%)',
             boxShadow: 'var(--shadow-button)',
+            minWidth: '280px',
           }}
         >
-          <div className="text-sm font-normal mb-1 opacity-95">Key Features</div>
-          <div className="text-base font-semibold">
-            {terms.tenorMonths}M • {terms.currency} • {barrierOrStrike}
+          <div className="text-sm font-normal opacity-95">Product Details</div>
+          
+          {/* Underlying Chips Row */}
+          <div className="flex flex-wrap gap-1.5">
+            {terms.underlyings.map((u, idx) => {
+              const { logoUrl, fallback } = getLogoWithFallback(u.ticker, u.name);
+              return (
+                <div
+                  key={idx}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/20 backdrop-blur-sm border border-white/30"
+                  style={{ fontSize: '13px' }}
+                >
+                  <img
+                    src={logoUrl}
+                    alt={u.ticker}
+                    className="w-4 h-4 rounded object-contain bg-white"
+                    onError={(e) => {
+                      const img = e.target as HTMLImageElement;
+                      img.style.display = 'none';
+                    }}
+                  />
+                  <span className="font-semibold">{u.ticker}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Key Info */}
+          <div className="space-y-1 text-sm font-medium">
+            <div className="flex items-center justify-between">
+              <span className="opacity-90">Duration:</span>
+              <span className="font-semibold">{terms.tenorMonths}M</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="opacity-90">Currency:</span>
+              <span className="font-semibold">{terms.currency}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="opacity-90">{terms.variant === 'standard_barrier_rc' ? 'Barrier:' : 'Strike:'}</span>
+              <span className="font-semibold">{formatPercent(terms.barrierPct || terms.strikePct || 0, 0)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="opacity-90">Autocall:</span>
+              <span className="font-semibold">
+                {terms.autocallEnabled 
+                  ? `Yes @ ${formatPercent(terms.autocallLevelPct || 1.0, 0)}`
+                  : 'No'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="opacity-90">1st Observation:</span>
+              <span className="font-semibold text-xs">{getFirstObservationDate()}</span>
+            </div>
           </div>
         </div>
       </div>

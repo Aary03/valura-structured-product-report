@@ -225,3 +225,7 @@ export function BreakfastEmailTemplate({ digest, recipientEmail }: EmailTemplate
   return <div dangerouslySetInnerHTML={{ __html: generateBreakfastEmailHTML(digest, recipientEmail) }} />;
 }
 
+
+
+
+

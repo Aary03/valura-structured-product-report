@@ -7,6 +7,7 @@ import { fmpClient } from './api/financialModelingPrep';
 import type { FMPQuote, FMPPriceTarget, FMPRatings } from './api/mappers';
 import { mapHistoricalPrices } from './api/mappers';
 import type { HistoricalPricePoint } from './api/mappers';
+import { generateCompanySummary } from './openai';
 
 export interface UnderlyingSummary {
   symbol: string;
@@ -40,6 +41,14 @@ export interface UnderlyingSummary {
   momentumBadge?: 'Uptrend' | 'Sideways' | 'Downtrend';
   riskBadge?: 'Low' | 'Medium' | 'High';
   insight: string; // Auto-generated one-liner
+  description?: string; // Company business description
+  descriptionSummary?: string; // AI-generated concise summary (for PDF)
+  website?: string; // Company website
+  ceo?: string; // CEO name
+  country?: string; // Headquarters country
+  city?: string; // Headquarters city
+  ipoDate?: string; // IPO date
+  fullTimeEmployees?: number; // Number of employees
 }
 
 type FMPRatiosTTM = {
@@ -310,6 +319,28 @@ export async function buildUnderlyingSummary(
       ? profile.image 
       : `https://financialmodelingprep.com/image-stock/${symbol}.png`;
 
+    // Generate AI-powered summary for PDF (if description exists)
+    let descriptionSummary: string | undefined;
+    if (profile?.description && profile.description.length > 200) {
+      try {
+        console.log(`🤖 Generating AI summary for ${symbol}...`);
+        const summaryResult = await generateCompanySummary({
+          companyName: profile.companyName || quote.name || symbol,
+          symbol,
+          description: profile.description,
+          maxWords: 50,
+        });
+        descriptionSummary = summaryResult.summary;
+        console.log(`✅ AI summary generated for ${symbol}`);
+      } catch (err) {
+        console.error(`Failed to generate AI summary for ${symbol}:`, err);
+        // Fallback to truncation
+        descriptionSummary = profile.description.substring(0, 280).trim() + '...';
+      }
+    } else if (profile?.description) {
+      descriptionSummary = profile.description;
+    }
+
     return {
       symbol,
       name: profile?.companyName || quote.name || symbol,
@@ -338,6 +369,14 @@ export async function buildUnderlyingSummary(
       momentumBadge,
       riskBadge,
       insight,
+      description: profile?.description,
+      descriptionSummary,
+      website: profile?.website,
+      ceo: profile?.ceo,
+      country: profile?.country,
+      city: profile?.city,
+      ipoDate: profile?.ipoDate,
+      fullTimeEmployees: profile?.fullTimeEmployees,
     };
   } catch (error) {
     console.error(`Error building summary for ${symbol}:`, error);

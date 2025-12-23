@@ -37,12 +37,6 @@ export function UnderlyingCard({ summary, isWorstOf = false }: UnderlyingCardPro
     ? 'text-danger'
     : 'text-text-secondary';
 
-  const riskColor = summary.riskBadge === 'Low'
-    ? 'bg-success-light text-success border-success'
-    : summary.riskBadge === 'High'
-    ? 'bg-danger-light text-danger border-danger'
-    : 'bg-warning-light text-warning border-warning';
-
   return (
     <CardShell className="p-7 relative">
 
@@ -90,11 +84,6 @@ export function UnderlyingCard({ summary, isWorstOf = false }: UnderlyingCardPro
                 : 'bg-danger-light text-danger border border-danger'
             }`}>
               {summary.analystConsensus}
-            </div>
-          )}
-          {summary.riskBadge && (
-            <div className={`px-2 py-1 rounded-full text-xs font-semibold border ${riskColor}`}>
-              Risk: {summary.riskBadge}
             </div>
           )}
         </div>

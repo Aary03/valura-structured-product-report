@@ -50,6 +50,11 @@ export interface ReverseConvertibleTerms {
   // Low Strike / Geared Put terms
   strikePct?: number; // K, e.g., 0.55 (required if variant = low_strike_geared_put)
   knockInBarrierPct?: number; // Optional; if omitted, KI = strikePct
+  
+  // Autocall terms (optional)
+  autocallEnabled?: boolean; // Whether autocall feature is enabled
+  autocallLevelPct?: number; // Autocall trigger level (e.g., 1.00 = 100%)
+  autocallFrequency?: CouponFrequency; // How often autocall is observed (default: same as coupon frequency)
 }
 
 /**

@@ -398,7 +398,7 @@ export function PdfCapitalProtectedParticipationReport({
                 const endDot = spark ? spark.coords[spark.coords.length - 1] : null;
 
                 return (
-                  <div key={s.symbol} className="pdf-underlying-card pdf-spotlight-card">
+                  <div key={s.symbol} className="pdf-underlying-card pdf-spotlight-card avoid-break">
                     <div className="pdf-underlying-head">
                       <div className="pdf-underlying-left">
                         <div className="pdf-logo">
@@ -418,11 +418,6 @@ export function PdfCapitalProtectedParticipationReport({
                         </div>
                       </div>
                       <div className="pdf-spotlight-badges">
-                        {s.riskBadge && (
-                          <span className={`pdf-pill ${s.riskBadge === 'Low' ? 'good' : s.riskBadge === 'High' ? 'bad' : ''}`}>
-                            Risk: {s.riskBadge}
-                          </span>
-                        )}
                         <span className={`pdf-pill ${perfTone}`}>
                           {s.performancePct >= 0 ? '▲' : '▼'} {formatNumber(Math.abs(s.performancePct), 1)}%
                         </span>
@@ -480,6 +475,19 @@ export function PdfCapitalProtectedParticipationReport({
                           Latest: <b style={{ color: 'var(--pdf-ink)' }}>{spark ? `${formatNumber(spark.last, 0)}%` : '—'}</b>
                         </div>
                       </div>
+
+                      {/* Company Description - AI Summary */}
+                      {(s.descriptionSummary || s.description) && (
+                        <div className="pdf-company-description">
+                          <div className="pdf-description-header">
+                            <b>About {s.symbol}</b>
+                            {s.ceo && <span style={{ marginLeft: 8 }}>• CEO: {s.ceo}</span>}
+                          </div>
+                          <div className="pdf-description-text">
+                            {s.descriptionSummary || s.description}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

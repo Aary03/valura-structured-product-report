@@ -16,6 +16,7 @@ import { CppnProductSummary } from './CppnProductSummary';
 import { UnderlyingsTable } from './UnderlyingsTable';
 import { SuitabilitySection } from './SuitabilitySection';
 import { UnderlyingsSpotlight } from './UnderlyingsSpotlight';
+import { CompanyDescriptions } from './CompanyDescriptions';
 import { CppnPayoffGraph } from './CppnPayoffGraph';
 import { PerformanceGraph } from './PerformanceGraph';
 import { CppnOutcomeExamples } from './CppnOutcomeExamples';
@@ -25,6 +26,7 @@ import { buildCPPNFlow } from '../scenarios/builders/buildCPPNFlow';
 import { Risks } from './Risks';
 import { Footer } from './Footer';
 import { TickerNewsSection } from '../news/TickerNewsSection';
+import type { UnderlyingSummary } from '../../services/underlyingSummary';
 
 interface CapitalProtectedParticipationReportProps {
   reportData: CapitalProtectedParticipationReportData;
@@ -33,6 +35,7 @@ interface CapitalProtectedParticipationReportProps {
 export function CapitalProtectedParticipationReport({ reportData }: CapitalProtectedParticipationReportProps) {
   const { terms, underlyingData, historicalData, curvePoints } = reportData;
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [summaries, setSummaries] = useState<UnderlyingSummary[]>([]);
 
   const currentLevelPct = useMemo(() => {
     if (typeof reportData.basketLevelPct === 'number') return reportData.basketLevelPct;
@@ -118,7 +121,17 @@ export function CapitalProtectedParticipationReport({ reportData }: CapitalProte
             historicalData={historicalData}
             terms={terms}
             worstUnderlyingIndex={terms.basketType === 'worst_of' ? reportData.worstUnderlyingIndex : null}
+            onSummariesLoaded={setSummaries}
           />
+
+          {/* Company Backgrounds - Full Width */}
+          {summaries.length > 0 && (
+            <CompanyDescriptions 
+              summaries={summaries} 
+              productType="CPPN"
+              barrierPct={terms.knockInEnabled ? terms.knockInBarrier : 0}
+            />
+          )}
 
           {/* Ticker News Sections */}
           <div className="space-y-4">

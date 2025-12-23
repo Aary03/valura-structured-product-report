@@ -19,6 +19,7 @@ interface UnderlyingsSpotlightProps {
   terms: ProductTerms;
   worstUnderlyingIndex: number | null;
   pdfMode?: boolean;
+  onSummariesLoaded?: (summaries: UnderlyingSummary[]) => void;
 }
 
 export function UnderlyingsSpotlight({
@@ -27,6 +28,7 @@ export function UnderlyingsSpotlight({
   terms,
   worstUnderlyingIndex,
   pdfMode = false,
+  onSummariesLoaded,
 }: UnderlyingsSpotlightProps) {
   const [summaries, setSummaries] = useState<UnderlyingSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,6 +85,7 @@ export function UnderlyingsSpotlight({
 
         const results = await Promise.all(summaryPromises);
         setSummaries(results);
+        onSummariesLoaded?.(results);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load underlying summaries');
         console.error('Error fetching summaries:', err);
