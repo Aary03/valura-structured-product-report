@@ -313,6 +313,21 @@ export function PayoffGraph({
             />
           )}
           
+          {/* 100% Par Reference Line */}
+          <ReferenceLine
+            y={100}
+            stroke="rgba(100,116,139,0.5)"
+            strokeDasharray="3 3"
+            strokeWidth={1}
+            label={pdfMode ? undefined : {
+              value: '100% (Par)',
+              position: 'insideRight',
+              fill: 'var(--text-tertiary)',
+              fontSize: 10,
+              offset: 10,
+            }}
+          />
+          
           {/* Barrier reference line */}
           <ReferenceLine
             x={barrierX}

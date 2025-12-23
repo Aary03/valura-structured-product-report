@@ -86,6 +86,25 @@ export function CppnPayoffGraph({
             />
           )}
 
+          {/* 100% Par Reference Line */}
+          <ReferenceLine
+            y={100}
+            stroke="rgba(100,116,139,0.5)"
+            strokeDasharray="3 3"
+            ifOverflow="extendDomain"
+            label={
+              pdfMode
+                ? undefined
+                : {
+                    value: '100% (Par)',
+                    position: 'insideRight',
+                    fill: 'var(--text-tertiary)',
+                    fontSize: 10,
+                    offset: 10,
+                  }
+            }
+          />
+
           {/* Floor P */}
           <ReferenceLine
             y={capitalProtectionPct}
