@@ -275,6 +275,7 @@ export function PdfCapitalProtectedParticipationReport({
               knockInLevelPct={terms.knockInLevelPct}
               downsideStrikePct={terms.downsideStrikePct ?? terms.knockInLevelPct}
               currentLevelPct={currentLevelPct}
+              bonusEnabled={terms.bonusEnabled}
               pdfMode
             />
           </div>

@@ -28,6 +28,7 @@ interface CppnPayoffGraphProps {
   knockInLevelPct?: number; // KI (%)
   downsideStrikePct?: number; // S (%)
   currentLevelPct?: number | null; // X_today (%), optional
+  bonusEnabled?: boolean;
   pdfMode?: boolean;
 }
 
@@ -41,6 +42,7 @@ export function CppnPayoffGraph({
   knockInLevelPct,
   downsideStrikePct,
   currentLevelPct,
+  bonusEnabled = false,
   pdfMode = false,
 }: CppnPayoffGraphProps) {
   const chartData = curvePoints.map((p) => ({
@@ -50,6 +52,22 @@ export function CppnPayoffGraph({
 
   const showCap = capType === 'capped' && typeof capLevelPct === 'number';
   const showKI = knockInEnabled && typeof knockInLevelPct === 'number';
+  const showFloor = !bonusEnabled && capitalProtectionPct > 0;
+
+  // For Bonus Certificate: participation (payoff increase) starts when the curve leaves the flat bonus line,
+  // which can be AFTER the strike if the bonus floor is binding.
+  const bonusPlateauPayoff =
+    bonusEnabled
+      ? chartData.find((d) => Math.abs(d.x - participationStartPct) < 0.6)?.payoff ??
+        chartData.find((d) => d.x >= participationStartPct - 1e-9)?.payoff ??
+        null
+      : null;
+
+  const effectiveParticipationStartPct =
+    bonusEnabled && typeof bonusPlateauPayoff === 'number'
+      ? chartData.find((d) => d.x >= participationStartPct - 1e-9 && d.payoff > bonusPlateauPayoff + 0.05)?.x ??
+        participationStartPct
+      : participationStartPct;
 
   return (
     <CardShell className={pdfMode ? 'p-3' : 'p-6'} hover={!pdfMode}>
@@ -105,27 +123,49 @@ export function CppnPayoffGraph({
             }
           />
 
-          {/* Floor P */}
-          <ReferenceLine
-            y={capitalProtectionPct}
-            stroke="rgba(16,185,129,0.75)"
-            strokeDasharray="6 4"
-            ifOverflow="extendDomain"
-            label={
-              pdfMode
-                ? undefined
-                : {
-                    value: 'Floor',
-                    position: 'insideTopRight',
-                    fill: 'var(--text-tertiary)',
-                    fontSize: 11,
-                  }
-            }
-          />
+          {/* Floor (CPPN only) */}
+          {showFloor && (
+            <ReferenceLine
+              y={capitalProtectionPct}
+              stroke="rgba(16,185,129,0.75)"
+              strokeDasharray="6 4"
+              ifOverflow="extendDomain"
+              label={
+                pdfMode
+                  ? undefined
+                  : {
+                      value: 'Floor',
+                      position: 'insideTopRight',
+                      fill: 'var(--text-tertiary)',
+                      fontSize: 11,
+                    }
+              }
+            />
+          )}
 
-          {/* Participation start K */}
+          {/* Bonus floor (Bonus Certificate only) */}
+          {bonusEnabled && typeof bonusPlateauPayoff === 'number' && (
+            <ReferenceLine
+              y={bonusPlateauPayoff}
+              stroke="rgba(16,185,129,0.55)"
+              strokeDasharray="6 4"
+              ifOverflow="extendDomain"
+              label={
+                pdfMode
+                  ? undefined
+                  : {
+                      value: 'Bonus floor',
+                      position: 'insideTopRight',
+                      fill: 'var(--text-tertiary)',
+                      fontSize: 11,
+                    }
+              }
+            />
+          )}
+
+          {/* Participation start (effective) */}
           <ReferenceLine
-            x={participationStartPct}
+            x={effectiveParticipationStartPct}
             stroke="rgba(79,70,229,0.65)"
             strokeDasharray="6 4"
             ifOverflow="extendDomain"
@@ -133,7 +173,7 @@ export function CppnPayoffGraph({
               pdfMode
                 ? undefined
                 : {
-                    value: 'Participation starts',
+                    value: bonusEnabled ? 'Payoff starts rising' : 'Participation starts',
                     position: 'insideTopLeft',
                     fill: 'var(--text-tertiary)',
                     fontSize: 11,
@@ -198,10 +238,23 @@ export function CppnPayoffGraph({
       {!pdfMode && (
         <div className="mt-4 text-sm text-muted">
           <div>
-            <span className="font-semibold text-text-primary">Floor:</span> {capitalProtectionPct}% (issuer dependent)
-          </div>
-          <div>
-            <span className="font-semibold text-text-primary">Starts at:</span> {participationStartPct}%
+            {bonusEnabled ? (
+              <>
+                <span className="font-semibold text-text-primary">Strike:</span> {participationStartPct}% •{' '}
+                <span className="font-semibold text-text-primary">Payoff rises from:</span>{' '}
+                {Math.round(effectiveParticipationStartPct)}%
+              </>
+            ) : (
+              <>
+                {showFloor && (
+                  <>
+                    <span className="font-semibold text-text-primary">Floor:</span> {capitalProtectionPct}% (issuer dependent)
+                    <div />
+                  </>
+                )}
+                <span className="font-semibold text-text-primary">Starts at:</span> {participationStartPct}%
+              </>
+            )}
             {showCap && <> • <span className="font-semibold text-text-primary">Cap:</span> {capLevelPct}%</>}
           </div>
           {showKI && (

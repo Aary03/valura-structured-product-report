@@ -158,6 +158,7 @@ export function CapitalProtectedParticipationReport({ reportData }: CapitalProte
               knockInLevelPct={terms.knockInLevelPct}
               downsideStrikePct={terms.downsideStrikePct ?? terms.knockInLevelPct}
               currentLevelPct={currentLevelPct}
+              bonusEnabled={terms.bonusEnabled}
             />
             <PerformanceGraph
               historicalData={historicalData}
