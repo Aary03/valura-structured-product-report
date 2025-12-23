@@ -26,7 +26,16 @@ export function CppnOneMinuteSummary({ terms, timestamp }: CppnOneMinuteSummaryP
           <div>
             <div className="font-semibold text-text-primary mb-1">Earn:</div>
             <div className="text-text-secondary">
-              {terms.participationRatePct}% {dirText} participation starting at {terms.participationStartPct}% ({capText})
+              {terms.bonusEnabled ? (
+                <>
+                  🎁 <strong>{terms.bonusLevelPct}% bonus</strong> if barrier ({terms.bonusBarrierPct}%) never breached; otherwise{' '}
+                  {terms.participationRatePct}% {dirText} participation starting at {terms.participationStartPct}% ({capText})
+                </>
+              ) : (
+                <>
+                  {terms.participationRatePct}% {dirText} participation starting at {terms.participationStartPct}% ({capText})
+                </>
+              )}
             </div>
           </div>
         </div>

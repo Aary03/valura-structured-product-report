@@ -62,6 +62,9 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
     knockInEnabled: boolean;
     knockInLevelPct: string;
     downsideStrikePct: string;
+    bonusEnabled: boolean;
+    bonusLevelPct: string;
+    bonusBarrierPct: string;
   };
 
   const [cppnFormData, setCppnFormData] = useState<CppnFormState>({
@@ -77,6 +80,9 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
     knockInEnabled: false,
     knockInLevelPct: '70', // KI
     downsideStrikePct: '', // S (default: KI)
+    bonusEnabled: false,
+    bonusLevelPct: '108',
+    bonusBarrierPct: '60',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -190,6 +196,18 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
     }
   }, [productType, cppnFormData.knockInEnabled, cppnStrikeGuard, cppnFormData.downsideStrikePct]);
 
+  // Auto-sync bonus barrier with knock-in level when knock-in is enabled
+  useEffect(() => {
+    if (productType !== 'CPPN') return;
+    if (!cppnFormData.bonusEnabled) return;
+    if (!cppnFormData.knockInEnabled) return;
+    // Sync bonus barrier to knock-in level by default
+    const kiLevel = cppnFormData.knockInLevelPct;
+    if (kiLevel && cppnFormData.bonusBarrierPct !== kiLevel) {
+      setCppnFormData((prev) => ({ ...prev, bonusBarrierPct: kiLevel }));
+    }
+  }, [productType, cppnFormData.bonusEnabled, cppnFormData.knockInEnabled, cppnFormData.knockInLevelPct]);
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     
@@ -284,6 +302,9 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
       knockInMode: 'EUROPEAN',
       knockInLevelPct: knockInEnabled ? ki : undefined,
       downsideStrikePct: knockInEnabled ? strikeS : undefined,
+      bonusEnabled: cppnFormData.bonusEnabled,
+      bonusLevelPct: cppnFormData.bonusEnabled ? parseFloat(cppnFormData.bonusLevelPct) : undefined,
+      bonusBarrierPct: cppnFormData.bonusEnabled ? parseFloat(cppnFormData.bonusBarrierPct) : undefined,
     };
 
     const validation = validateCapitalProtectedParticipationTerms(terms);
@@ -899,6 +920,72 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
                             Default <span className="font-mono">S = KI</span> makes the payoff curve continuous at the KI point.
                           </>
                         )}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* CPPN: Bonus Feature */}
+              <div className="border-t border-border pt-6">
+                <h3 className="text-xl font-semibold mb-4 text-valura-ink">Bonus Feature (Optional)</h3>
+                <p className="text-sm text-muted mb-4">
+                  ⚠️ Only available when Capital Protection is 0%. If barrier is never breached, investor receives bonus return.
+                </p>
+                <label className="flex items-center gap-3 cursor-pointer mb-4">
+                  <input
+                    type="checkbox"
+                    checked={cppnFormData.bonusEnabled}
+                    onChange={(e) => setCppnFormData((prev) => ({ ...prev, bonusEnabled: e.target.checked }))}
+                    className="w-5 h-5"
+                    disabled={parseFloat(cppnFormData.capitalProtectionPct) !== 0}
+                  />
+                  <span className={parseFloat(cppnFormData.capitalProtectionPct) !== 0 ? 'text-muted line-through' : 'text-valura-ink'}>
+                    Enable Bonus (barrier never touched = guaranteed bonus return)
+                  </span>
+                </label>
+
+                {cppnFormData.bonusEnabled && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="label">Bonus Level (%)</label>
+                      <input
+                        type="number"
+                        className="input-field"
+                        value={cppnFormData.bonusLevelPct}
+                        onChange={(e) => handleCppnChange('bonusLevelPct', e.target.value)}
+                        required
+                        min="100"
+                        max="200"
+                        step="0.1"
+                      />
+                      {errors.bonusLevelPct && (
+                        <p className="text-danger-fg text-sm mt-1">{errors.bonusLevelPct}</p>
+                      )}
+                      <p className="text-sm text-muted mt-1">
+                        Return if barrier never breached (e.g., 108 = 8% gain)
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="label">Bonus Barrier (%)</label>
+                      <input
+                        type="number"
+                        className="input-field"
+                        value={cppnFormData.bonusBarrierPct}
+                        onChange={(e) => handleCppnChange('bonusBarrierPct', e.target.value)}
+                        required
+                        min="0"
+                        max="100"
+                        step="0.1"
+                      />
+                      {errors.bonusBarrierPct && (
+                        <p className="text-danger-fg text-sm mt-1">{errors.bonusBarrierPct}</p>
+                      )}
+                      <p className="text-sm text-muted mt-1">
+                        {cppnFormData.knockInEnabled 
+                          ? `Auto-syncs with Knock-In level (${cppnFormData.knockInLevelPct}%) by default, but can be changed`
+                          : 'If stock touches this level, bonus is lost (e.g., 60 = 60% of initial)'}
                       </p>
                     </div>
                   </div>

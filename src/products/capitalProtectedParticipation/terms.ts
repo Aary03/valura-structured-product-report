@@ -40,6 +40,11 @@ export interface CapitalProtectedParticipationTerms {
 
   // Downside strike (geared-put strike) used only when knock-in triggers
   downsideStrikePct?: number; // S (default: KI)
+
+  // Bonus feature (only available when capital protection is OFF, i.e., capitalProtectionPct = 0)
+  bonusEnabled: boolean;
+  bonusLevelPct?: number; // Bonus return if barrier never breached (e.g., 108 = 108%)
+  bonusBarrierPct?: number; // Barrier level that shouldn't be touched for bonus (e.g., 60)
 }
 
 export function validateCapitalProtectedParticipationTerms(
@@ -73,8 +78,8 @@ export function validateCapitalProtectedParticipationTerms(
   }
 
   // Payoff params
-  if (terms.capitalProtectionPct <= 0 || terms.capitalProtectionPct > 200) {
-    errors.push('Capital protection (%) must be between 0 and 200');
+  if (terms.capitalProtectionPct < 0 || terms.capitalProtectionPct > 200) {
+    errors.push('Capital protection (%) must be 0 or between 1 and 200');
   }
   if (terms.participationStartPct <= 0 || terms.participationStartPct > 300) {
     errors.push('Participation start (%) must be between 0 and 300');
@@ -119,6 +124,20 @@ export function validateCapitalProtectedParticipationTerms(
     }
   }
 
+  // Bonus validation
+  if (terms.bonusEnabled) {
+    // Bonus only available when capital protection is OFF
+    if (terms.capitalProtectionPct !== 0) {
+      errors.push('Bonus feature is only available when Capital Protection is 0%');
+    }
+    if (terms.bonusLevelPct == null || terms.bonusLevelPct <= 100 || terms.bonusLevelPct > 200) {
+      errors.push('Bonus level must be between 100% and 200%');
+    }
+    if (terms.bonusBarrierPct == null || terms.bonusBarrierPct <= 0 || terms.bonusBarrierPct >= 100) {
+      errors.push('Bonus barrier must be between 0% and 100%');
+    }
+  }
+
   return { valid: errors.length === 0, errors };
 }
 
@@ -138,6 +157,7 @@ export function getDefaultCapitalProtectedParticipationTerms(): CapitalProtected
     capType: 'none',
     knockInEnabled: false,
     knockInMode: 'EUROPEAN',
+    bonusEnabled: false,
   };
 }
 

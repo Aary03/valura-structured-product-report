@@ -60,6 +60,11 @@ export function CppnProductSummary({ terms }: { terms: CapitalProtectedParticipa
     specs.push({ label: 'Downside Strike (S)', value: `${terms.downsideStrikePct ?? terms.knockInLevelPct}%` });
   }
 
+  if (terms.bonusEnabled) {
+    specs.push({ label: '🎁 Bonus Level', value: `${terms.bonusLevelPct}%` });
+    specs.push({ label: '🎁 Bonus Barrier', value: `${terms.bonusBarrierPct}%` });
+  }
+
   if (terms.basketType !== 'single') {
     specs.push({ label: 'Basket', value: terms.underlyings.map((u) => u.ticker).join(' / ') });
   }

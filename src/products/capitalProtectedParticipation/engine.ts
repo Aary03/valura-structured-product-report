@@ -65,15 +65,31 @@ export function computeBasketLevelPct(
 
 export function computeCppnPayoffPct(
   terms: CapitalProtectedParticipationTerms,
-  basketLevelPct: number
+  basketLevelPct: number,
+  barrierNeverBreached?: boolean // For bonus feature: true if path never touched bonus barrier
 ): {
   redemptionPct: number; // fraction of notional
   knockInTriggered: boolean;
+  bonusPaid: boolean;
 } {
   const X = basketLevelPct; // %
   const P = terms.capitalProtectionPct;
   const K = terms.participationStartPct;
   const a = terms.participationRatePct / 100;
+
+  // Check bonus FIRST (only if capital protection is OFF)
+  if (terms.bonusEnabled && terms.bonusLevelPct && terms.bonusBarrierPct) {
+    // Bonus pays if barrier never breached
+    // If barrierNeverBreached is not provided, we check European-style: X >= bonusBarrier
+    const bonusConditionMet = barrierNeverBreached ?? (X >= terms.bonusBarrierPct);
+    if (bonusConditionMet) {
+      return {
+        redemptionPct: terms.bonusLevelPct / 100,
+        knockInTriggered: false,
+        bonusPaid: true,
+      };
+    }
+  }
 
   const capEnabled = terms.capType === 'capped' && typeof terms.capLevelPct === 'number';
   const C = terms.capLevelPct ?? undefined;
@@ -101,14 +117,14 @@ export function computeCppnPayoffPct(
   if (knockInTriggered) {
     // Conditional regime: no floor P, geared-put style via strike S
     const payoffPct = safeDivide(100 * X, sEnforced); // percent of notional
-    return { redemptionPct: round(payoffPct / 100, 6), knockInTriggered: true };
+    return { redemptionPct: round(payoffPct / 100, 6), knockInTriggered: true, bonusPaid: false };
   }
 
   // Protected participation regime
   const delta = terms.participationDirection === 'up' ? Math.max(0, X - K) : Math.max(0, K - X);
   const cappedDelta = capEnabled && C != null ? Math.min(delta, Math.max(0, C - K)) : delta;
   const payoffPct = Math.max(P, P + a * cappedDelta);
-  return { redemptionPct: round(payoffPct / 100, 6), knockInTriggered: false };
+  return { redemptionPct: round(payoffPct / 100, 6), knockInTriggered: false, bonusPaid: false };
 }
 
 export function calculateCapitalProtectedParticipationPayoff(
@@ -117,11 +133,12 @@ export function calculateCapitalProtectedParticipationPayoff(
 ): PayoffResult & {
   basketLevelPct: number;
   knockInTriggered: boolean;
+  bonusPaid: boolean;
   worstUnderlyingIndex?: number;
   bestUnderlyingIndex?: number;
 } {
   const { basketLevelPct, worstUnderlyingIndex, bestUnderlyingIndex } = computeBasketLevelPct(terms, market);
-  const { redemptionPct, knockInTriggered } = computeCppnPayoffPct(terms, basketLevelPct);
+  const { redemptionPct, knockInTriggered, bonusPaid } = computeCppnPayoffPct(terms, basketLevelPct);
 
   // Timeline (v1: no coupons)
   let maturityDate: ISODateString;
@@ -158,6 +175,7 @@ export function calculateCapitalProtectedParticipationPayoff(
     timeline,
     basketLevelPct,
     knockInTriggered,
+    bonusPaid,
     ...(worstUnderlyingIndex != null ? { worstUnderlyingIndex } : {}),
     ...(bestUnderlyingIndex != null ? { bestUnderlyingIndex } : {}),
   };
