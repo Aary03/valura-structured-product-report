@@ -3,7 +3,8 @@
  * Fetches live market data to enrich AI conversations
  */
 
-import { fetchStockQuote, fetchCompanyProfile } from '../fmp';
+import { fmpClient } from '../api/financialModelingPrep';
+import type { FMPQuote } from '../api/mappers';
 
 const FMP_API_KEY = import.meta.env.VITE_FMP_API_KEY;
 
@@ -31,13 +32,27 @@ export async function enrichUnderlyingData(ticker: string): Promise<EnrichedUnde
 
   try {
     // Fetch quote and profile in parallel
-    const [quote, profile] = await Promise.all([
-      fetchStockQuote(ticker),
-      fetchCompanyProfile(ticker),
+    const [quoteResponse, profileResponse] = await Promise.allSettled([
+      fmpClient.get<FMPQuote[]>(fmpClient.quote.quote(ticker)),
+      fmpClient.get<any>(fmpClient.profile.profile(ticker)),
     ]);
 
-    if (!quote || !profile) {
+    // Extract quote
+    let quote: FMPQuote | null = null;
+    if (quoteResponse.status === 'fulfilled') {
+      const quoteData = quoteResponse.value;
+      quote = Array.isArray(quoteData) ? quoteData[0] : quoteData;
+    }
+
+    if (!quote) {
       return null;
+    }
+
+    // Extract profile
+    let profile: any = null;
+    if (profileResponse.status === 'fulfilled') {
+      const profileData = profileResponse.value;
+      profile = Array.isArray(profileData) ? profileData[0] : profileData;
     }
 
     // Calculate suggested barrier based on volatility (if available)
@@ -55,13 +70,13 @@ export async function enrichUnderlyingData(ticker: string): Promise<EnrichedUnde
 
     return {
       ticker: quote.symbol,
-      name: profile.companyName || quote.name || ticker,
+      name: (profile?.companyName || quote.name || ticker) as string,
       currentPrice: quote.price,
       change: quote.change || 0,
       changePercent: quote.changesPercentage || 0,
-      sector: profile.sector,
-      industry: profile.industry,
-      marketCap: profile.mktCap,
+      sector: profile?.sector,
+      industry: profile?.industry,
+      marketCap: profile?.mktCap,
       volatility,
       suggestedBarrier,
     };
