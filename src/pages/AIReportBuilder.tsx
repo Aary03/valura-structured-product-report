@@ -4,10 +4,11 @@
  */
 
 import { useState } from 'react';
-import { ArrowLeft, Zap, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Zap, CheckCircle, Settings } from 'lucide-react';
 import { ChatInterface } from '../components/ai-builder/ChatInterface';
 import { LivePreview } from '../components/ai-builder/LivePreview';
 import { QuickTemplates } from '../components/ai-builder/QuickTemplates';
+import { ModeSelector, ModeHeaderBadge } from '../components/ai-builder/ModeSelector';
 import { useAIConversation } from '../hooks/useAIConversation';
 import { useReportGenerator } from '../hooks/useReportGenerator';
 import type { ProductTerms } from '../hooks/useReportGenerator';
@@ -16,10 +17,11 @@ import { CapitalProtectedParticipationReport } from '../components/report/Capita
 import valuraLogo from '../../Valura.ai - Logo (Black).png';
 
 export function AIReportBuilder() {
-  const { messages, isProcessing, context, sendMessage, completeness } = useAIConversation();
+  const { messages, isProcessing, context, sendMessage, completeness, mode, setMode } = useAIConversation();
   const { reportData, loading, generateReport } = useReportGenerator();
   const [isGenerating, setIsGenerating] = useState(false);
   const [showTemplates, setShowTemplates] = useState(true);
+  const [showModeSelector, setShowModeSelector] = useState(false);
   const [reportGenerated, setReportGenerated] = useState(false);
 
   const handleGenerate = async () => {
@@ -165,7 +167,38 @@ export function AIReportBuilder() {
               isProcessing={isProcessing}
               onSendMessage={sendMessage}
               completeness={completeness}
+              onSettingsClick={() => setShowModeSelector(!showModeSelector)}
             />
+            
+            {/* Mode Selector Modal */}
+            {showModeSelector && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-2xl w-full animate-in zoom-in-95 duration-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-bold text-slate-800">Choose AI Personality</h3>
+                    <button
+                      onClick={() => setShowModeSelector(false)}
+                      className="text-slate-400 hover:text-slate-600"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <ModeSelector
+                    selectedMode={mode}
+                    onModeChange={(newMode) => {
+                      setMode(newMode);
+                      setShowModeSelector(false);
+                    }}
+                    disabled={messages.length > 2}
+                  />
+                  {messages.length > 2 && (
+                    <p className="text-sm text-amber-600 mt-4 p-3 bg-amber-50 rounded-lg">
+                      ⚠️ Mode can only be changed at the start of conversation. Start a new chat to switch modes.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Preview Panel */}

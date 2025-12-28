@@ -3,6 +3,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import type { ConversationMode } from '../types/conversationMode';
 import {
   initializeConversation,
   processUserMessage,
@@ -15,13 +16,15 @@ interface UseAIConversationResult {
   isProcessing: boolean;
   error: string | null;
   context: ConversationContext;
+  mode: ConversationMode;
   sendMessage: (message: string) => Promise<void>;
+  setMode: (mode: ConversationMode) => void;
   reset: () => void;
   completeness: number;
 }
 
-export function useAIConversation(): UseAIConversationResult {
-  const [context, setContext] = useState<ConversationContext>(() => initializeConversation());
+export function useAIConversation(initialMode: ConversationMode = 'professional'): UseAIConversationResult {
+  const [context, setContext] = useState<ConversationContext>(() => initializeConversation(initialMode));
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortController = useRef<AbortController | null>(null);
@@ -72,8 +75,14 @@ export function useAIConversation(): UseAIConversationResult {
     }
   }, [context, isProcessing]);
 
+  const setMode = useCallback((newMode: ConversationMode) => {
+    setContext(initializeConversation(newMode));
+    setError(null);
+    setIsProcessing(false);
+  }, []);
+
   const reset = useCallback(() => {
-    setContext(initializeConversation());
+    setContext(prev => initializeConversation(prev.mode));
     setError(null);
     setIsProcessing(false);
   }, []);
@@ -92,7 +101,9 @@ export function useAIConversation(): UseAIConversationResult {
     isProcessing,
     error,
     context,
+    mode: context.mode,
     sendMessage,
+    setMode,
     reset,
     completeness: context.draft.completeness,
   };

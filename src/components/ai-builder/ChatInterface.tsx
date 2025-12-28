@@ -4,7 +4,7 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, Sparkles, Mic, MicOff } from 'lucide-react';
+import { Send, Loader2, Sparkles, Mic, MicOff, Settings } from 'lucide-react';
 import type { Message } from '../../services/ai/aiReportAssistant';
 
 interface ChatInterfaceProps {
@@ -12,6 +12,7 @@ interface ChatInterfaceProps {
   isProcessing: boolean;
   onSendMessage: (message: string) => void;
   completeness: number;
+  onSettingsClick?: () => void;
 }
 
 export function ChatInterface({
@@ -19,6 +20,7 @@ export function ChatInterface({
   isProcessing,
   onSendMessage,
   completeness,
+  onSettingsClick,
 }: ChatInterfaceProps) {
   const [input, setInput] = useState('');
   const [isListening, setIsListening] = useState(false);
@@ -101,9 +103,20 @@ export function ChatInterface({
               <p className="text-xs text-indigo-100">Powered by GPT-5.2 Thinking</p>
             </div>
           </div>
-          <div className="text-right">
-            <div className="text-xs text-indigo-100">Progress</div>
-            <div className="text-2xl font-bold">{completeness}%</div>
+          <div className="flex items-center gap-3">
+            {onSettingsClick && (
+              <button
+                onClick={onSettingsClick}
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                title="Change AI personality"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
+            )}
+            <div className="text-right">
+              <div className="text-xs text-indigo-100">Progress</div>
+              <div className="text-2xl font-bold">{completeness}%</div>
+            </div>
           </div>
         </div>
       </div>

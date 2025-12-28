@@ -5,7 +5,10 @@
 
 import type { ReverseConvertibleTerms } from '../../products/reverseConvertible/terms';
 import type { CapitalProtectedParticipationTerms } from '../../products/capitalProtectedParticipation/terms';
+import type { ConversationMode } from '../../types/conversationMode';
+import { getModeConfig } from '../../types/conversationMode';
 import { enrichMultipleUnderlyings, formatEnrichedDataForAI } from './aiDataEnricher';
+import { resolveMultipleCompanies, quickTickerLookup } from './tickerSearch';
 
 const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
@@ -44,6 +47,7 @@ export interface ConversationContext {
   state: ConversationState;
   draft: ReportDraft;
   messages: Message[];
+  mode: ConversationMode;
   userProfile?: {
     sophistication: 'beginner' | 'intermediate' | 'expert';
     preferences?: Record<string, any>;
@@ -53,8 +57,12 @@ export interface ConversationContext {
 /**
  * System prompt for AI Report Assistant
  */
-function getSystemPrompt(): string {
+function getSystemPrompt(mode: ConversationMode = 'professional'): string {
+  const modeConfig = getModeConfig(mode);
+  
   return `You are an expert financial advisor and structured products specialist helping users create professional investment reports through natural conversation.
+
+${modeConfig.systemPromptSuffix}
 
 YOUR ROLE:
 - Guide users through creating structured product reports
@@ -169,7 +177,7 @@ MISSING FIELDS: ${context.draft.missingFields.join(', ') || 'None'}
 `;
 
   const fullMessages = [
-    { role: 'system', content: getSystemPrompt() },
+    { role: 'system', content: getSystemPrompt(context.mode) },
     { role: 'system', content: systemContext },
     ...messages,
   ];
@@ -273,7 +281,7 @@ function parseAIResponse(content: string): {
 /**
  * Extract parameters from AI's structured JSON response
  */
-export function extractParametersFromAI(aiParams: any): Partial<ReportDraft> {
+export async function extractParametersFromAI(aiParams: any): Promise<Partial<ReportDraft>> {
   if (!aiParams) return {};
 
   const extracted: Partial<ReportDraft> = {};
@@ -283,12 +291,32 @@ export function extractParametersFromAI(aiParams: any): Partial<ReportDraft> {
     extracted.productType = aiParams.productType;
   }
 
-  // Underlyings
+  // Underlyings - Smart ticker resolution
   if (aiParams.underlyings && Array.isArray(aiParams.underlyings)) {
-    extracted.underlyings = aiParams.underlyings.map((ticker: string) => ({
-      ticker: ticker.toUpperCase(),
-      name: ticker.toUpperCase(), // Will be enriched later
-    }));
+    // Resolve company names to tickers
+    const resolved = await Promise.all(
+      aiParams.underlyings.map(async (input: string) => {
+        // Quick lookup first
+        const quick = quickTickerLookup(input);
+        if (quick) return { ticker: quick, name: input };
+
+        // If already looks like ticker, use as-is
+        if (/^[A-Z]{1,5}$/.test(input.toUpperCase())) {
+          return { ticker: input.toUpperCase(), name: input.toUpperCase() };
+        }
+
+        // Try intelligent search
+        const results = await resolveMultipleCompanies([input]);
+        if (results.length > 0) {
+          return { ticker: results[0].ticker, name: results[0].name };
+        }
+
+        // Fallback
+        return { ticker: input.toUpperCase(), name: input };
+      })
+    );
+
+    extracted.underlyings = resolved;
   }
 
   // Parameters object
@@ -481,8 +509,8 @@ export async function processUserMessage(
 
   const { response, suggestions, extractedParams } = await callAI(conversationHistory, tempContext);
 
-  // Extract parameters from AI's JSON response
-  const extracted = extractedParams ? extractParametersFromAI(extractedParams) : {};
+  // Extract parameters from AI's JSON response (now async for ticker search)
+  const extracted = extractedParams ? await extractParametersFromAI(extractedParams) : {};
 
   // If new underlyings detected, enrich with live data
   let marketDataContext = '';
@@ -571,15 +599,19 @@ export async function processUserMessage(
 /**
  * Initialize conversation
  */
-export function initializeConversation(): ConversationContext {
+export function initializeConversation(mode: ConversationMode = 'professional'): ConversationContext {
+  const modeConfig = getModeConfig(mode);
+  
   const welcomeMessage: Message = {
     id: 'welcome',
     role: 'assistant',
-    content: `Hi! I'm your AI Report Assistant 🤖
-
-I'll help you create a professional structured product report in minutes through a simple conversation.
-
-What would you like to create today?`,
+    content: mode === 'wall-street' 
+      ? `${modeConfig.emoji} Ready. What structure?`
+      : mode === 'concise'
+        ? `${modeConfig.emoji} Product type?`
+        : mode === 'beginner-friendly'
+          ? `${modeConfig.emoji} Hi! I'm your AI assistant and I'll help you create a structured product report step-by-step. Don't worry if you're new to this - I'll explain everything along the way.\n\nLet's start: What type of investment product would you like to create? I can help with Reverse Convertibles (high income with some risk), Capital Protected Notes (guaranteed principal), or Bonus Certificates (bonus return with barrier).`
+          : `${modeConfig.emoji} Hi! I'm your AI Report Assistant.\n\nI'll help you create a professional structured product report through a simple conversation.\n\nWhat would you like to create today?`,
     timestamp: new Date(),
     suggestions: [
       'Reverse Convertible',
@@ -590,6 +622,7 @@ What would you like to create today?`,
 
   return {
     state: 'welcome',
+    mode,
     draft: {
       completeness: 0,
       missingFields: [],
