@@ -262,7 +262,7 @@ export function PdfCapitalProtectedParticipationReport({
             </div>
           </div>
 
-          <div style={{ height: 10 }} />
+          <div style={{ height: 8 }} />
 
           <div className="avoid-break">
             <CppnPayoffGraph
@@ -280,7 +280,7 @@ export function PdfCapitalProtectedParticipationReport({
             />
           </div>
 
-          <div style={{ height: 10 }} />
+          <div style={{ height: 8 }} />
 
           <div className="pdf-card avoid-break">
             <div className="pdf-section-title">More about the underlyings</div>
@@ -330,7 +330,7 @@ export function PdfCapitalProtectedParticipationReport({
             </table>
           </div>
 
-          <div style={{ height: 10 }} />
+          <div style={{ height: 8 }} />
 
           {/* Good fit + Break-even (keep same section structure as RC PDF) */}
           <div className="pdf-grid-2-eq">
@@ -401,7 +401,7 @@ export function PdfCapitalProtectedParticipationReport({
       <div className="pdf-page">
         <div className="pdf-sheet">
           <div className="pdf-topbar avoid-break" />
-          <div style={{ height: 10 }} />
+          <div style={{ height: 8 }} />
 
           <div className="pdf-grid-2">
             <div className="avoid-break">
@@ -476,11 +476,11 @@ export function PdfCapitalProtectedParticipationReport({
             </div>
           </div>
 
-          <div style={{ height: 8 }} />
+          <div style={{ height: 6 }} />
 
           {/* Underlying spotlights (keep same section as RC PDF) */}
-          <div className="pdf-card avoid-break">
-            <div className="pdf-section-title">Underlying spotlights</div>
+          <div>
+            <div className="pdf-section-title" style={{ marginBottom: 6 }}>Underlying spotlights</div>
             <div className="pdf-spotlight-grid pdf-spotlight-grid-1">
               {(spotlightSummaries.length > 0 ? spotlightSummaries : []).map((s, idx) => {
                 const spark = sparklineForIndex(idx);

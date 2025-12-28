@@ -323,7 +323,7 @@ export function PdfReverseConvertibleReport({ reportData }: { reportData: Revers
             </table>
           </div>
 
-          <div style={{ height: 10 }} />
+          <div style={{ height: 8 }} />
 
           {/* Good fit + Break-even */}
           <div className="pdf-grid-2-eq">
@@ -367,7 +367,7 @@ export function PdfReverseConvertibleReport({ reportData }: { reportData: Revers
       <div className="pdf-page">
         <div className="pdf-sheet">
           <div className="pdf-topbar avoid-break" />
-          <div style={{ height: 10 }} />
+          <div style={{ height: 8 }} />
 
           <div className="pdf-grid-2">
             <div className="avoid-break">
@@ -422,11 +422,11 @@ export function PdfReverseConvertibleReport({ reportData }: { reportData: Revers
             </div>
           </div>
 
-          <div style={{ height: 8 }} />
+          <div style={{ height: 6 }} />
 
           {/* Underlying spotlights */}
-          <div className="pdf-card avoid-break">
-            <div className="pdf-section-title">Underlying spotlights</div>
+          <div>
+            <div className="pdf-section-title" style={{ marginBottom: 6 }}>Underlying spotlights</div>
             <div className='pdf-spotlight-grid pdf-spotlight-grid-1'>
               {(spotlightSummaries.length > 0 ? spotlightSummaries : []).map((s, idx) => {
                 const spark = sparklineForIndex(idx);
