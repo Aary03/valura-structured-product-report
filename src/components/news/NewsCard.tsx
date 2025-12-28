@@ -114,3 +114,6 @@ export function NewsCard({ article, showEntities = true, compact = false }: News
 
 
 
+
+
+

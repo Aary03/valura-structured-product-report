@@ -6,78 +6,118 @@
 import type { CapitalProtectedParticipationTerms } from '../../../products/capitalProtectedParticipation/terms';
 import type { ScenarioFlow } from '../types';
 import { formatNumber } from '../../../core/utils/math';
+import {
+  getCPPNProtectedOutcome,
+  getCPPNParticipationOutcome,
+  getCPPNKnockInTriggered,
+  getCPPNKnockInSafe,
+  getBonusCertificateBonus,
+  getBonusCertificateBarrierBreached,
+} from '../../../services/scenarioDescriptions';
 
 export function buildCPPNFlow(terms: CapitalProtectedParticipationTerms): ScenarioFlow {
   const levelLabel =
     terms.basketType === 'single'
-      ? 'Final Level'
-      : `Basket Final Level (${terms.basketType.replace('_', '-')})`;
+      ? 'stock'
+      : `${terms.basketType.replace('_', '-')} basket`;
 
   const nodes = [];
 
-  // Optional KI node first
+  // BONUS CERTIFICATE LOGIC
+  if (terms.bonusEnabled && terms.bonusBarrierPct && terms.bonusLevelPct) {
+    const bonusDesc = getBonusCertificateBonus(terms, terms.notional);
+    const breachDesc = getBonusCertificateBarrierBreached(terms, terms.notional);
+
+    nodes.push({
+      id: 'bonus-barrier',
+      stage: 'maturity' as const,
+      condition: `Did ${levelLabel} stay above ${formatNumber(terms.bonusBarrierPct, 0)}% throughout the entire period?`,
+      yes: {
+        title: bonusDesc.title,
+        lines: bonusDesc.lines,
+        note: bonusDesc.example,
+      },
+      no: {
+        title: breachDesc.title,
+        lines: breachDesc.lines,
+        note: breachDesc.example,
+      },
+      metaChips: [
+        `Bonus: ${formatNumber(terms.bonusLevelPct, 0)}%`,
+        `Barrier: ${formatNumber(terms.bonusBarrierPct, 0)}%`,
+      ],
+    });
+
+    return {
+      title: 'Understand the Scenarios',
+      subtitle: 'What happens at maturity based on whether the barrier was touched',
+      nodes,
+    };
+  }
+
+  // KNOCK-IN NODE (if enabled)
   if (terms.knockInEnabled && terms.knockInLevelPct != null) {
+    const kiTriggeredDesc = getCPPNKnockInTriggered(terms, terms.notional);
+    const kiSafeDesc = getCPPNKnockInSafe(terms, terms.notional);
+
     nodes.push({
       id: 'cppn-ki',
       stage: 'maturity' as const,
-      condition: `Is ${levelLabel} < KI (${terms.knockInLevelPct}%)?`,
+      condition: `Did ${levelLabel} drop below ${formatNumber(terms.knockInLevelPct, 0)}%?`,
       yes: {
-        title: 'Knock-in Regime (Geared Put)',
-        lines: [
-          'Protection floor is removed in this regime',
-          `Payoff% = 100 × (X / S)`,
-          `S = ${formatNumber(terms.downsideStrikePct ?? terms.knockInLevelPct, 0)}% (airbag-style by default)`,
-        ],
+        title: kiTriggeredDesc.title,
+        lines: kiTriggeredDesc.lines,
+        note: kiTriggeredDesc.example,
       },
       no: {
-        title: 'Protected Participation Regime',
-        lines: [
-          `Floor: ${formatNumber(terms.capitalProtectionPct, 0)}%`,
-          `Participation starts at K = ${formatNumber(terms.participationStartPct, 0)}%`,
-          `Rate: ${formatNumber(terms.participationRatePct, 0)}% (${terms.participationDirection === 'up' ? 'upside' : 'downside'})`,
-        ],
+        title: kiSafeDesc.title,
+        lines: kiSafeDesc.lines,
+        note: kiSafeDesc.example,
       },
       metaChips: [
-        terms.capType === 'capped' && terms.capLevelPct != null ? `Cap: ${formatNumber(terms.capLevelPct, 0)}%` : 'Cap: None',
-      ],
+        `Safety Level: ${formatNumber(terms.knockInLevelPct, 0)}%`,
+        terms.capType === 'capped' && terms.capLevelPct != null ? `Max Return: ${formatNumber(terms.capLevelPct, 0)}%` : undefined,
+      ].filter(Boolean) as string[],
     });
   }
 
-  // Participation node (always)
+  // PARTICIPATION NODE (always show for standard CPPN)
+  const participationDesc = getCPPNParticipationOutcome(terms, terms.notional);
+  const protectedDesc = getCPPNProtectedOutcome(terms, terms.notional);
+
   nodes.push({
     id: 'cppn-participation',
     stage: 'maturity' as const,
     condition:
       terms.participationDirection === 'up'
-        ? `Is ${levelLabel} > K (${formatNumber(terms.participationStartPct, 0)}%)?`
-        : `Is ${levelLabel} < K (${formatNumber(terms.participationStartPct, 0)}%)?`,
+        ? `Did ${levelLabel} go up (above ${formatNumber(terms.participationStartPct, 0)}%)?`
+        : `Did ${levelLabel} go down (below ${formatNumber(terms.participationStartPct, 0)}%)?`,
     yes: {
-      title: terms.participationDirection === 'up' ? 'Participating Outcome' : 'Participating Outcome (Downside)',
-      lines: [
-        `Payoff% = max(P, P + a × ${terms.participationDirection === 'up' ? '(X − K)' : '(K − X)'})`,
-        terms.capType === 'capped' && terms.capLevelPct != null ? `Capped at ${formatNumber(terms.capLevelPct, 0)}%` : 'No cap',
-      ],
+      title: participationDesc.title,
+      lines: participationDesc.lines,
+      note: participationDesc.example,
     },
     no: {
-      title: 'Protected Outcome',
-      lines: [
-        `Payoff% = ${formatNumber(terms.capitalProtectionPct, 0)}% (floor)`,
-        'No participation in this region',
-      ],
+      title: protectedDesc.title,
+      lines: protectedDesc.lines,
+      note: protectedDesc.example,
     },
     metaChips: [
-      `P: ${formatNumber(terms.capitalProtectionPct, 0)}%`,
-      `α: ${formatNumber(terms.participationRatePct, 0)}%`,
-      `K: ${formatNumber(terms.participationStartPct, 0)}%`,
+      `Floor: ${formatNumber(terms.capitalProtectionPct, 0)}%`,
+      `Participation: ${formatNumber(terms.participationRatePct, 0)}%`,
+      terms.capType === 'capped' && terms.capLevelPct != null ? `Cap: ${formatNumber(terms.capLevelPct, 0)}%` : 'No Cap',
     ],
   });
 
   return {
     title: 'Understand the Scenarios',
-    subtitle: 'What happens at maturity based on final basket level',
+    subtitle: 'What happens at maturity based on how the underlying performs',
     nodes,
   };
 }
+
+
+
 
 
 
