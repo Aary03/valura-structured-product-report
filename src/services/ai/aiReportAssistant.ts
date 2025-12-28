@@ -89,30 +89,63 @@ PARSING EXAMPLES:
 User: "100k" → "notional": 100000
 User: "100,000" → "notional": 100000
 User: "$100k" → "notional": 100000
-User: "70% barrier" → "barrierPct": 0.70
+User: "70% barrier" → "barrierPct": 0.70 (for RC) OR "bonusBarrierPct": 70 (for Bonus, as integer)
 User: "10% coupon" → "couponRatePA": 0.10
 User: "12 months" → "tenorMonths": 12
 User: "1 year" → "tenorMonths": 12
 User: "18 months" → "tenorMonths": 18
 User: "quarterly" → "couponFreqPerYear": 4
 User: "monthly" → "couponFreqPerYear": 12
+User: "106% bonus" → "bonusLevelPct": 106
+User: "120% participation" → "participationRatePct": 120
 
-PRODUCTS:
-1. Reverse Convertible (RC) - needs: barrier, coupon, tenor
-2. Capital Protected Note (CPPN) - needs: protection, participation, tenor
-3. Bonus Certificate - needs: bonus level, barrier, tenor
+PRODUCTS & REQUIRED FIELDS:
+1. Reverse Convertible (RC):
+   - barrierPct (0.50-0.90, as decimal)
+   - couponRatePA (0.05-0.20, as decimal)
+   - couponFreqPerYear (1/2/4/12)
+   - tenor (6-36 months)
 
-VALIDATION RULES:
+2. Capital Protected Note (CPPN):
+   - capitalProtectionPct (0-100, as integer)
+   - participationRatePct (50-200, as integer)
+   - participationStartPct (usually 100, as integer)
+   - tenor (6-36 months)
+
+3. Bonus Certificate:
+   - bonusLevelPct (105-120, as integer %)
+   - bonusBarrierPct (50-80, as integer %)
+   - participationStartPct (usually 100, as integer %)
+   - participationRatePct (usually 100, as integer %)
+   - tenor (6-36 months)
+   
+IMPORTANT: Bonus Certificate needs participation fields! Don't forget them!
+
+VALIDATION RULES & DEFAULTS:
 - RC: Barrier 50-90%, Coupon 5-20%, Tenor 6-36 months
-- CPPN: Protection 0-100%, Participation 50-200%, Tenor 6-36 months
-- Bonus: Bonus 105-120%, Barrier 50-80%, Tenor 6-36 months
+- CPPN: Protection 0-100%, Participation 50-200%, Start 100%, Tenor 6-36 months
+- Bonus: Bonus 105-120%, Barrier 50-80%, Participation 100%, Start 100%, Tenor 6-36 months
+
+SMART DEFAULTS (apply automatically):
+For Bonus Certificate:
+  - If bonusBarrierPct provided but not participationStartPct: set participationStartPct = 100
+  - If bonusBarrierPct provided but not participationRatePct: set participationRatePct = 100
+  - capitalProtectionPct must always = 0 for Bonus
+
+For CPPN:
+  - If participationRatePct provided but not participationStartPct: set participationStartPct = 100
+  - If not specified, participationDirection = "up"
+
+For RC:
+  - If couponRatePA provided but not couponFreqPerYear: set couponFreqPerYear = 4 (quarterly)
 
 TONE:
 - Professional but friendly
 - Celebrate progress (Great! Perfect! Excellent!)
-- Ask for missing info clearly
+- When product is Bonus Certificate, automatically add participation fields with defaults
+- Don't make users specify obvious defaults
 
-CRITICAL: ALWAYS include [PARAMS] JSON block, even if no new params extracted (use null for unchanged values).`;
+CRITICAL: ALWAYS include [PARAMS] JSON block with ALL fields, including smart defaults.`;
 }
 
 /**
@@ -299,6 +332,21 @@ export function extractParametersFromAI(aiParams: any): Partial<ReportDraft> {
   if (aiParams.bonusBarrierPct) {
     params.bonusBarrierPct = Number(aiParams.bonusBarrierPct);
   }
+  
+  // Apply smart defaults for Bonus Certificate
+  if (aiParams.productType === 'Bonus') {
+    params.capitalProtectionPct = 0; // Always 0 for bonus
+    params.bonusEnabled = true;
+    params.participationDirection = 'up';
+    
+    // Add participation fields with defaults if not provided
+    if (!aiParams.participationRatePct) {
+      params.participationRatePct = 100; // Default 1:1 participation
+    }
+    if (!aiParams.participationStartPct) {
+      params.participationStartPct = 100; // Default start at 100%
+    }
+  }
 
   // Cap
   if (aiParams.capType) {
@@ -306,6 +354,22 @@ export function extractParametersFromAI(aiParams: any): Partial<ReportDraft> {
   }
   if (aiParams.capLevelPct) {
     params.capLevelPct = Number(aiParams.capLevelPct);
+  }
+
+  // Smart defaults for other product types
+  if (aiParams.productType === 'CPPN') {
+    if (params.participationRatePct && !params.participationStartPct) {
+      params.participationStartPct = 100;
+    }
+    if (!params.participationDirection) {
+      params.participationDirection = 'up';
+    }
+  }
+
+  if (aiParams.productType === 'RC') {
+    if (params.couponRatePA && !params.couponFreqPerYear) {
+      params.couponFreqPerYear = 4; // Default quarterly
+    }
   }
 
   if (Object.keys(params).length > 0) {
@@ -321,15 +385,17 @@ export function extractParametersFromAI(aiParams: any): Partial<ReportDraft> {
 export function calculateCompleteness(draft: ReportDraft): number {
   let score = 0;
   const weights = {
-    productType: 20,
-    underlyings: 20,
+    productType: 15,
+    underlyings: 15,
     notional: 10,
     tenor: 10,
     // Product-specific
-    barrier: 15,
-    coupon: 15,
-    protection: 15,
-    participation: 15,
+    barrier: 12,
+    coupon: 12,
+    protection: 12,
+    participation: 12,
+    bonusLevel: 12,
+    bonusBarrier: 12,
   };
 
   if (draft.productType) score += weights.productType;
@@ -343,9 +409,17 @@ export function calculateCompleteness(draft: ReportDraft): number {
     if (draft.productType === 'RC') {
       if (params.barrierPct || params.strikePct) score += weights.barrier;
       if (params.couponRatePA) score += weights.coupon;
-    } else if (draft.productType === 'CPPN' || draft.productType === 'Bonus') {
+      if (params.couponFreqPerYear) score += weights.coupon;
+    } else if (draft.productType === 'CPPN') {
       if (params.capitalProtectionPct !== undefined) score += weights.protection;
       if (params.participationRatePct) score += weights.participation;
+      if (params.participationStartPct) score += weights.participation;
+    } else if (draft.productType === 'Bonus') {
+      // Bonus Certificate requirements
+      if (params.bonusLevelPct) score += weights.bonusLevel;
+      if (params.bonusBarrierPct) score += weights.bonusBarrier;
+      if (params.participationRatePct) score += weights.participation;
+      if (params.participationStartPct) score += weights.participation;
     }
   }
 
@@ -368,6 +442,7 @@ export function getMissingFields(draft: ReportDraft): string[] {
   if (draft.productType === 'RC') {
     if (!params || (!params.barrierPct && !params.strikePct)) missing.push('Barrier/Strike');
     if (!params || !params.couponRatePA) missing.push('Coupon Rate');
+    if (!params || !params.couponFreqPerYear) missing.push('Coupon Frequency');
   } else if (draft.productType === 'CPPN') {
     if (!params || params.capitalProtectionPct === undefined) missing.push('Capital Protection');
     if (!params || !params.participationRatePct) missing.push('Participation Rate');
@@ -375,6 +450,8 @@ export function getMissingFields(draft: ReportDraft): string[] {
   } else if (draft.productType === 'Bonus') {
     if (!params || !params.bonusLevelPct) missing.push('Bonus Level');
     if (!params || !params.bonusBarrierPct) missing.push('Bonus Barrier');
+    if (!params || !params.participationRatePct) missing.push('Participation Rate');
+    if (!params || !params.participationStartPct) missing.push('Participation Start');
   }
 
   return missing;

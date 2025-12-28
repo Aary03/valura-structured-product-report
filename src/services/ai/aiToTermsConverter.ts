@@ -67,8 +67,9 @@ export function convertDraftToTerms(draft: ReportDraft): ProductTerms | null {
     // Build CPPN/Bonus terms
     const defaults = getDefaultCapitalProtectedParticipationTerms();
     
-    const capitalProtectionPct = params.capitalProtectionPct !== undefined ? params.capitalProtectionPct : 100;
-    const participationRatePct = params.participationRatePct || 120;
+    const isBonus = draft.productType === 'Bonus';
+    const capitalProtectionPct = isBonus ? 0 : (params.capitalProtectionPct !== undefined ? params.capitalProtectionPct : 100);
+    const participationRatePct = params.participationRatePct || (isBonus ? 100 : 120);
     const participationStartPct = params.participationStartPct || 100;
     const participationDirection = params.participationDirection || 'up';
 
@@ -91,15 +92,16 @@ export function convertDraftToTerms(draft: ReportDraft): ProductTerms | null {
       ...(params.capType === 'capped' ? { capLevelPct: params.capLevelPct || 140 } : {}),
       knockInEnabled: params.knockInEnabled || false,
       knockInMode: 'EUROPEAN',
-      ...(params.knockInEnabled ? { 
+      ...(!isBonus && params.knockInEnabled ? { 
         knockInLevelPct: params.knockInLevelPct || 70,
         downsideStrikePct: params.downsideStrikePct || params.knockInLevelPct || 70,
       } : {}),
-      bonusEnabled: draft.productType === 'Bonus',
-      ...(draft.productType === 'Bonus' ? {
+      bonusEnabled: isBonus,
+      ...(isBonus ? {
         bonusLevelPct: params.bonusLevelPct || 108,
         bonusBarrierPct: params.bonusBarrierPct || 60,
-        capitalProtectionPct: 0, // Bonus requires no protection
+        participationRatePct: participationRatePct,
+        participationStartPct: participationStartPct,
       } : {}),
     };
 
