@@ -58,49 +58,61 @@ function getSystemPrompt(): string {
 
 YOUR ROLE:
 - Guide users through creating structured product reports
-- Ask ONE clear question at a time
-- Extract parameters from natural language
+- Extract ALL parameters from EVERY user message
+- Ask ONE clear question at a time for missing info
 - Validate inputs and suggest sensible defaults
-- Explain financial concepts when needed
 - Be friendly, professional, and concise
 
-PRODUCTS YOU HELP CREATE:
-1. Reverse Convertible (RC) - High coupon notes with downside risk
-2. Capital Protected Participation Note (CPPN) - Protected floor with upside
-3. Bonus Certificate - Bonus return if barrier not breached
+CRITICAL: PARAMETER EXTRACTION
+After EVERY user message, you MUST extract parameters in JSON format at the END of your response.
 
-CONVERSATION FLOW:
-1. Welcome → Ask what product they want
-2. Product selected → Ask for underlying stocks
-3. Underlyings selected → Fetch live data, ask for parameters
-4. Parameters collected → Validate and preview
-5. Validated → Generate report
+FORMAT YOUR RESPONSE LIKE THIS:
+[Your conversational response here]
 
-PARAMETER EXTRACTION:
-When user provides info, extract:
-- Tickers (AAPL, MSFT, etc.)
-- Amounts ($100k, 100000, etc.)
-- Percentages (10%, 70%, etc.)
-- Time periods (12 months, 1 year, etc.)
+[PARAMS]
+{
+  "productType": "RC" | "CPPN" | "Bonus" | null,
+  "underlyings": ["AAPL", "MSFT"] or null,
+  "notional": 100000 (as number, not string),
+  "tenorMonths": 12 (as number),
+  "barrierPct": 0.70 (as decimal, 70% = 0.70),
+  "couponRatePA": 0.10 (as decimal, 10% = 0.10),
+  "couponFreqPerYear": 4 (1=annual, 2=semi, 4=quarterly, 12=monthly),
+  "participationRatePct": 120 (as integer),
+  "capitalProtectionPct": 100 (as integer),
+  "bonusLevelPct": 108,
+  "bonusBarrierPct": 60
+}
+[/PARAMS]
+
+PARSING EXAMPLES:
+User: "100k" → "notional": 100000
+User: "100,000" → "notional": 100000
+User: "$100k" → "notional": 100000
+User: "70% barrier" → "barrierPct": 0.70
+User: "10% coupon" → "couponRatePA": 0.10
+User: "12 months" → "tenorMonths": 12
+User: "1 year" → "tenorMonths": 12
+User: "18 months" → "tenorMonths": 18
+User: "quarterly" → "couponFreqPerYear": 4
+User: "monthly" → "couponFreqPerYear": 12
+
+PRODUCTS:
+1. Reverse Convertible (RC) - needs: barrier, coupon, tenor
+2. Capital Protected Note (CPPN) - needs: protection, participation, tenor
+3. Bonus Certificate - needs: bonus level, barrier, tenor
 
 VALIDATION RULES:
 - RC: Barrier 50-90%, Coupon 5-20%, Tenor 6-36 months
 - CPPN: Protection 0-100%, Participation 50-200%, Tenor 6-36 months
 - Bonus: Bonus 105-120%, Barrier 50-80%, Tenor 6-36 months
 
-RESPONSE FORMAT:
-- Keep responses under 3 sentences
-- Use bullet points for options
-- Provide 2-3 quick reply suggestions
-- Use emojis sparingly (✅ ⚠️ 💡)
-
 TONE:
 - Professional but friendly
-- Patient and helpful
-- Avoid jargon unless user shows expertise
 - Celebrate progress (Great! Perfect! Excellent!)
+- Ask for missing info clearly
 
-Remember: You're building trust and making complex finance accessible.`;
+CRITICAL: ALWAYS include [PARAMS] JSON block, even if no new params extracted (use null for unchanged values).`;
 }
 
 /**
@@ -109,7 +121,7 @@ Remember: You're building trust and making complex finance accessible.`;
 async function callAI(
   messages: Array<{ role: string; content: string }>,
   context: ConversationContext
-): Promise<{ response: string; suggestions?: string[] }> {
+): Promise<{ response: string; suggestions?: string[]; extractedParams?: any }> {
   if (!OPENAI_API_KEY) {
     throw new Error('OpenAI API key not configured');
   }
@@ -179,7 +191,8 @@ MISSING FIELDS: ${context.draft.missingFields.join(', ') || 'None'}
     }
 
     const data = await response.json();
-    return parseAIResponse(data.choices[0]?.message?.content || '');
+    const aiMessage = data.choices[0]?.message?.content || '';
+    return parseAIResponse(aiMessage);
   } catch (error) {
     console.error('AI call failed:', error);
     throw error;
@@ -187,77 +200,116 @@ MISSING FIELDS: ${context.draft.missingFields.join(', ') || 'None'}
 }
 
 /**
- * Parse AI response and extract suggestions
+ * Parse AI response and extract suggestions + parameters
  */
-function parseAIResponse(content: string): { response: string; suggestions?: string[] } {
+function parseAIResponse(content: string): { 
+  response: string; 
+  suggestions?: string[];
+  extractedParams?: any;
+} {
+  let response = content;
+  let suggestions: string[] | undefined;
+  let extractedParams: any | undefined;
+
+  // Extract [PARAMS] JSON block
+  const paramsMatch = content.match(/\[PARAMS\]([\s\S]*?)\[\/PARAMS\]/);
+  if (paramsMatch) {
+    try {
+      const jsonStr = paramsMatch[1].trim();
+      extractedParams = JSON.parse(jsonStr);
+      response = content.replace(/\[PARAMS\][\s\S]*?\[\/PARAMS\]/, '').trim();
+    } catch (err) {
+      console.error('Failed to parse AI parameters:', err);
+    }
+  }
+
   // Check if response contains suggestions (format: [SUGGEST: option1, option2, option3])
-  const suggestionMatch = content.match(/\[SUGGEST:\s*([^\]]+)\]/);
-  
+  const suggestionMatch = response.match(/\[SUGGEST:\s*([^\]]+)\]/);
   if (suggestionMatch) {
-    const suggestions = suggestionMatch[1]
+    suggestions = suggestionMatch[1]
       .split(',')
       .map(s => s.trim())
       .filter(s => s.length > 0);
     
-    const response = content.replace(/\[SUGGEST:[^\]]+\]/, '').trim();
-    return { response, suggestions };
+    response = response.replace(/\[SUGGEST:[^\]]+\]/, '').trim();
   }
 
-  return { response: content };
+  return { response, suggestions, extractedParams };
 }
 
 /**
- * Extract parameters from user message
+ * Extract parameters from AI's structured JSON response
  */
-export async function extractParameters(
-  userMessage: string,
-  context: ConversationContext
-): Promise<Partial<ReportDraft>> {
+export function extractParametersFromAI(aiParams: any): Partial<ReportDraft> {
+  if (!aiParams) return {};
+
   const extracted: Partial<ReportDraft> = {};
 
-  // Extract tickers (AAPL, MSFT, GOOGL, etc.)
-  const tickerRegex = /\b[A-Z]{1,5}\b/g;
-  const tickers = userMessage.match(tickerRegex);
-  if (tickers) {
-    extracted.underlyings = tickers.map(ticker => ({
-      ticker,
-      name: ticker, // Will be enriched with real name later
+  // Product type
+  if (aiParams.productType) {
+    extracted.productType = aiParams.productType;
+  }
+
+  // Underlyings
+  if (aiParams.underlyings && Array.isArray(aiParams.underlyings)) {
+    extracted.underlyings = aiParams.underlyings.map((ticker: string) => ({
+      ticker: ticker.toUpperCase(),
+      name: ticker.toUpperCase(), // Will be enriched later
     }));
   }
 
-  // Extract amounts
-  const amountRegex = /\$?([\d,]+)k?/gi;
-  const amounts = userMessage.match(amountRegex);
-  if (amounts) {
-    const notional = parseFloat(amounts[0].replace(/[$,k]/gi, '')) * 
-      (amounts[0].toLowerCase().includes('k') ? 1000 : 1);
-    if (!extracted.parameters) extracted.parameters = {};
-    (extracted.parameters as any).notional = notional;
-  }
-
-  // Extract percentages
-  const percentRegex = /(\d+(?:\.\d+)?)\s*%/g;
-  const percents = [...userMessage.matchAll(percentRegex)];
+  // Parameters object
+  const params: any = {};
   
-  // Extract time periods
-  const tenorRegex = /(\d+)\s*(month|year|mo|yr)s?/i;
-  const tenorMatch = userMessage.match(tenorRegex);
-  if (tenorMatch) {
-    const value = parseInt(tenorMatch[1]);
-    const unit = tenorMatch[2].toLowerCase();
-    const months = unit.startsWith('y') ? value * 12 : value;
-    if (!extracted.parameters) extracted.parameters = {};
-    (extracted.parameters as any).tenorMonths = months;
+  if (aiParams.notional) params.notional = Number(aiParams.notional);
+  if (aiParams.tenorMonths) params.tenorMonths = Number(aiParams.tenorMonths);
+  
+  // RC-specific
+  if (aiParams.barrierPct !== undefined && aiParams.barrierPct !== null) {
+    params.barrierPct = Number(aiParams.barrierPct);
+  }
+  if (aiParams.strikePct !== undefined && aiParams.strikePct !== null) {
+    params.strikePct = Number(aiParams.strikePct);
+  }
+  if (aiParams.couponRatePA !== undefined && aiParams.couponRatePA !== null) {
+    params.couponRatePA = Number(aiParams.couponRatePA);
+  }
+  if (aiParams.couponFreqPerYear) {
+    params.couponFreqPerYear = Number(aiParams.couponFreqPerYear);
+  }
+  
+  // CPPN-specific
+  if (aiParams.capitalProtectionPct !== undefined && aiParams.capitalProtectionPct !== null) {
+    params.capitalProtectionPct = Number(aiParams.capitalProtectionPct);
+  }
+  if (aiParams.participationRatePct) {
+    params.participationRatePct = Number(aiParams.participationRatePct);
+  }
+  if (aiParams.participationStartPct) {
+    params.participationStartPct = Number(aiParams.participationStartPct);
+  }
+  if (aiParams.participationDirection) {
+    params.participationDirection = aiParams.participationDirection;
+  }
+  
+  // Bonus-specific
+  if (aiParams.bonusLevelPct) {
+    params.bonusLevelPct = Number(aiParams.bonusLevelPct);
+  }
+  if (aiParams.bonusBarrierPct) {
+    params.bonusBarrierPct = Number(aiParams.bonusBarrierPct);
   }
 
-  // Detect product type from keywords
-  const lowerMessage = userMessage.toLowerCase();
-  if (lowerMessage.includes('reverse convertible') || lowerMessage.includes('rc')) {
-    extracted.productType = 'RC';
-  } else if (lowerMessage.includes('bonus')) {
-    extracted.productType = 'Bonus';
-  } else if (lowerMessage.includes('capital protected') || lowerMessage.includes('cppn') || lowerMessage.includes('protected')) {
-    extracted.productType = 'CPPN';
+  // Cap
+  if (aiParams.capType) {
+    params.capType = aiParams.capType;
+  }
+  if (aiParams.capLevelPct) {
+    params.capLevelPct = Number(aiParams.capLevelPct);
+  }
+
+  if (Object.keys(params).length > 0) {
+    extracted.parameters = params;
   }
 
   return extracted;
@@ -338,8 +390,22 @@ export async function processUserMessage(
   aiResponse: Message;
   updatedContext: ConversationContext;
 }> {
-  // Extract parameters from user message
-  const extracted = await extractParameters(userMessage, context);
+  // Build conversation history for AI
+  const conversationHistory = context.messages.map(msg => ({
+    role: msg.role,
+    content: msg.content,
+  }));
+  conversationHistory.push({ role: 'user', content: userMessage });
+
+  // Call AI to get response AND structured parameter extraction
+  const tempContext: ConversationContext = {
+    ...context,
+  };
+
+  const { response, suggestions, extractedParams } = await callAI(conversationHistory, tempContext);
+
+  // Extract parameters from AI's JSON response
+  const extracted = extractedParams ? extractParametersFromAI(extractedParams) : {};
 
   // If new underlyings detected, enrich with live data
   let marketDataContext = '';
@@ -359,14 +425,17 @@ export async function processUserMessage(
     }
   }
 
-  // Merge extracted parameters with draft
+  // Merge extracted parameters with existing draft
   const updatedDraft: ReportDraft = {
     ...context.draft,
-    ...extracted,
+    productType: extracted.productType || context.draft.productType,
+    underlyings: extracted.underlyings || context.draft.underlyings,
     parameters: {
       ...context.draft.parameters,
       ...extracted.parameters,
     },
+    completeness: 0,
+    missingFields: [],
   };
 
   // Calculate completeness
@@ -378,8 +447,11 @@ export async function processUserMessage(
   if (updatedDraft.productType && context.state === 'welcome') {
     nextState = 'product_selection';
   }
-  if (updatedDraft.underlyings && updatedDraft.underlyings.length > 0 && context.state === 'product_selection') {
+  if (updatedDraft.underlyings && updatedDraft.underlyings.length > 0 && (context.state === 'welcome' || context.state === 'product_selection')) {
     nextState = 'underlying_selection';
+  }
+  if (updatedDraft.completeness >= 50 && updatedDraft.completeness < 80) {
+    nextState = 'parameters_collection';
   }
   if (updatedDraft.completeness >= 80) {
     nextState = 'validation';
@@ -388,33 +460,30 @@ export async function processUserMessage(
     nextState = 'preview';
   }
 
-  // Build conversation history for AI
-  const conversationHistory = context.messages.map(msg => ({
-    role: msg.role,
-    content: msg.content,
-  }));
-  conversationHistory.push({ role: 'user', content: userMessage });
-
-  // Get AI response
-  const updatedContext: ConversationContext = {
-    state: nextState,
-    draft: updatedDraft,
-    messages: context.messages,
-    userProfile: context.userProfile,
-    ...(marketDataContext ? { marketDataContext } : {}),
-  } as ConversationContext;
-
-  const { response, suggestions } = await callAI(conversationHistory, updatedContext);
+  // Create user and AI messages
+  const userMsg: Message = {
+    id: `user-${Date.now()}`,
+    role: 'user',
+    content: userMessage,
+    timestamp: new Date(),
+  };
 
   const aiMessage: Message = {
-    id: `ai-${Date.now()}`,
+    id: `ai-${Date.now() + 1}`,
     role: 'assistant',
     content: response,
     timestamp: new Date(),
     suggestions,
   };
 
-  updatedContext.messages = [...context.messages, aiMessage];
+  // Create updated context
+  const updatedContext: ConversationContext = {
+    state: nextState,
+    draft: updatedDraft,
+    messages: [...context.messages, userMsg, aiMessage],
+    userProfile: context.userProfile,
+    ...(marketDataContext ? { marketDataContext } : {}),
+  } as ConversationContext;
 
   return {
     aiResponse: aiMessage,

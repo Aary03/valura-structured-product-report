@@ -32,19 +32,6 @@ export function useAIConversation(): UseAIConversationResult {
     setIsProcessing(true);
     setError(null);
 
-    // Add user message immediately for better UX
-    const userMsg: Message = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content: userMessage,
-      timestamp: new Date(),
-    };
-
-    setContext(prev => ({
-      ...prev,
-      messages: [...prev.messages, userMsg],
-    }));
-
     try {
       // Cancel any in-flight request
       if (abortController.current) {
@@ -52,7 +39,8 @@ export function useAIConversation(): UseAIConversationResult {
       }
       abortController.current = new AbortController();
 
-      const { aiResponse, updatedContext } = await processUserMessage(userMessage, context);
+      // Process message (this adds both user and AI messages)
+      const { updatedContext } = await processUserMessage(userMessage, context);
 
       setContext(updatedContext);
     } catch (err) {
@@ -60,9 +48,16 @@ export function useAIConversation(): UseAIConversationResult {
       setError(errorMessage);
       console.error('AI conversation error:', err);
 
-      // Add error message to chat
+      // Add user message and error message to chat
+      const userMsg: Message = {
+        id: `user-${Date.now()}`,
+        role: 'user',
+        content: userMessage,
+        timestamp: new Date(),
+      };
+
       const errorMsg: Message = {
-        id: `error-${Date.now()}`,
+        id: `error-${Date.now() + 1}`,
         role: 'assistant',
         content: `I apologize, but I encountered an error: ${errorMessage}. Please try again or rephrase your message.`,
         timestamp: new Date(),
@@ -70,7 +65,7 @@ export function useAIConversation(): UseAIConversationResult {
 
       setContext(prev => ({
         ...prev,
-        messages: [...prev.messages, errorMsg],
+        messages: [...prev.messages, userMsg, errorMsg],
       }));
     } finally {
       setIsProcessing(false);
