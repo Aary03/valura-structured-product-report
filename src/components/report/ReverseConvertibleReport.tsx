@@ -27,6 +27,11 @@ import { Download } from 'lucide-react';
 import { downloadReportPDFServer } from '../../utils/pdfExport';
 import { useState } from 'react';
 import type { UnderlyingSummary } from '../../services/underlyingSummary';
+import { ExportDropdown } from '../export/ExportDropdown';
+import { ExportPreviewModal } from '../export/ExportPreviewModal';
+import type { ExportFormat } from '../export/ExportDropdown';
+import { useAIContentGeneration } from '../../hooks/useAIContentGeneration';
+import { downloadAsDocument } from '../../utils/exportContent';
 
 interface ReverseConvertibleReportProps {
   reportData: ReverseConvertibleReportData;
@@ -36,6 +41,10 @@ export function ReverseConvertibleReport({ reportData }: ReverseConvertibleRepor
   const { terms, underlyingData, historicalData, curvePoints, intrinsicValue, barrierLevel, strikeLevel, documentId, generatedDate } = reportData;
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [summaries, setSummaries] = useState<UnderlyingSummary[]>([]);
+  
+  // AI Content Generation
+  const { content: aiContent, isGenerating: isGeneratingAI, isReady: aiReady } = useAIContentGeneration(reportData);
+  const [previewModal, setPreviewModal] = useState<{ isOpen: boolean; format: ExportFormat; content: string } | null>(null);
 
   // Calculate current worst-of level (or single level)
   const currentLevel = reportData.worstOfLevel || 
@@ -72,11 +81,30 @@ export function ReverseConvertibleReport({ reportData }: ReverseConvertibleRepor
     }
   };
 
+  const handleExport = (format: ExportFormat, content: string) => {
+    setPreviewModal({ isOpen: true, format, content });
+  };
+
+  const handleDownloadExport = () => {
+    if (!previewModal) return;
+    const productName = terms.variant === 'standard_barrier_rc' 
+      ? 'Reverse Convertible' 
+      : 'Geared Put Reverse Convertible';
+    downloadAsDocument(previewModal.content, previewModal.format, productName);
+  };
+
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-grad)' }}>
       <div id="report-container" className="report-root max-w-7xl mx-auto px-6 py-8">
-        {/* PDF Download Button */}
-        <div className="flex justify-end mb-6 no-print">
+        {/* Action Buttons */}
+        <div className="flex justify-end gap-3 mb-6 no-print">
+          <ExportDropdown
+            content={aiContent}
+            isGenerating={isGeneratingAI}
+            isReady={aiReady}
+            productName={terms.variant === 'standard_barrier_rc' ? 'Reverse Convertible' : 'Geared Put RC'}
+            onExport={handleExport}
+          />
           <button
             onClick={handleDownloadPDF}
             disabled={isGeneratingPDF}
@@ -211,6 +239,18 @@ export function ReverseConvertibleReport({ reportData }: ReverseConvertibleRepor
           <Footer date={generatedDate} documentId={documentId} />
         </div>
       </div>
+
+      {/* Export Preview Modal */}
+      {previewModal && (
+        <ExportPreviewModal
+          isOpen={previewModal.isOpen}
+          onClose={() => setPreviewModal(null)}
+          format={previewModal.format}
+          content={previewModal.content}
+          productName={terms.variant === 'standard_barrier_rc' ? 'Reverse Convertible' : 'Geared Put RC'}
+          onDownload={handleDownloadExport}
+        />
+      )}
     </div>
   );
 }

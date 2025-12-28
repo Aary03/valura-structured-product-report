@@ -27,6 +27,11 @@ import { Risks } from './Risks';
 import { Footer } from './Footer';
 import { TickerNewsSection } from '../news/TickerNewsSection';
 import type { UnderlyingSummary } from '../../services/underlyingSummary';
+import { ExportDropdown } from '../export/ExportDropdown';
+import { ExportPreviewModal } from '../export/ExportPreviewModal';
+import type { ExportFormat } from '../export/ExportDropdown';
+import { useAIContentGeneration } from '../../hooks/useAIContentGeneration';
+import { downloadAsDocument } from '../../utils/exportContent';
 
 interface CapitalProtectedParticipationReportProps {
   reportData: CapitalProtectedParticipationReportData;
@@ -36,6 +41,10 @@ export function CapitalProtectedParticipationReport({ reportData }: CapitalProte
   const { terms, underlyingData, historicalData, curvePoints } = reportData;
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [summaries, setSummaries] = useState<UnderlyingSummary[]>([]);
+  
+  // AI Content Generation
+  const { content: aiContent, isGenerating: isGeneratingAI, isReady: aiReady } = useAIContentGeneration(reportData);
+  const [previewModal, setPreviewModal] = useState<{ isOpen: boolean; format: ExportFormat; content: string } | null>(null);
 
   const currentLevelPct = useMemo(() => {
     if (typeof reportData.basketLevelPct === 'number') return reportData.basketLevelPct;
@@ -71,10 +80,29 @@ export function CapitalProtectedParticipationReport({ reportData }: CapitalProte
     }
   };
 
+  const handleExport = (format: ExportFormat, content: string) => {
+    setPreviewModal({ isOpen: true, format, content });
+  };
+
+  const handleDownloadExport = () => {
+    if (!previewModal) return;
+    const productName = terms.bonusEnabled 
+      ? 'Bonus Certificate' 
+      : 'Capital Protected Participation Note';
+    downloadAsDocument(previewModal.content, previewModal.format, productName);
+  };
+
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-grad)' }}>
       <div id="report-container" className="report-root max-w-7xl mx-auto px-6 py-8">
-        <div className="flex justify-end mb-6 no-print">
+        <div className="flex justify-end gap-3 mb-6 no-print">
+          <ExportDropdown
+            content={aiContent}
+            isGenerating={isGeneratingAI}
+            isReady={aiReady}
+            productName={terms.bonusEnabled ? 'Bonus Certificate' : 'Capital Protected Participation Note'}
+            onExport={handleExport}
+          />
           <button
             onClick={handleDownloadPDF}
             disabled={isGeneratingPDF}
@@ -187,6 +215,18 @@ export function CapitalProtectedParticipationReport({ reportData }: CapitalProte
           <Footer date={reportData.generatedDate} documentId={reportData.documentId} />
         </div>
       </div>
+
+      {/* Export Preview Modal */}
+      {previewModal && (
+        <ExportPreviewModal
+          isOpen={previewModal.isOpen}
+          onClose={() => setPreviewModal(null)}
+          format={previewModal.format}
+          content={previewModal.content}
+          productName={terms.bonusEnabled ? 'Bonus Certificate' : 'Capital Protected Participation Note'}
+          onDownload={handleDownloadExport}
+        />
+      )}
     </div>
   );
 }
