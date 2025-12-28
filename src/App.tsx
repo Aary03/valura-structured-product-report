@@ -8,6 +8,7 @@ import { ProductInputForm } from './components/input/ProductInputForm';
 import { ReverseConvertibleReport } from './components/report/ReverseConvertibleReport';
 import { CapitalProtectedParticipationReport } from './components/report/CapitalProtectedParticipationReport';
 import { NewsPage } from './components/pages/NewsPage';
+import { AIReportBuilder } from './pages/AIReportBuilder';
 import { useReportGenerator } from './hooks/useReportGenerator';
 import type { ProductTerms } from './hooks/useReportGenerator';
 import { APITestComponent } from './test-api-component';
@@ -20,7 +21,7 @@ import './styles/theme.css';
 const TEST_API_MODE = false;
 const TEST_NEWS_API_MODE = false; // Set to false for normal app, true to test Marketaux API
 
-type RouteType = 'home' | 'breakfast';
+type RouteType = 'home' | 'breakfast' | 'ai-builder';
 
 function App() {
   const isPdf = new URLSearchParams(window.location.search).get('pdf') === '1';
@@ -36,6 +37,8 @@ function App() {
       const hash = window.location.hash.slice(1); // Remove #
       if (hash === 'breakfast') {
         setCurrentRoute('breakfast');
+      } else if (hash === 'ai-builder') {
+        setCurrentRoute('ai-builder');
       } else {
         setCurrentRoute('home');
       }
@@ -66,6 +69,11 @@ function App() {
     return <NewsPage />;
   }
 
+  // Route to AI Report Builder
+  if (currentRoute === 'ai-builder') {
+    return <AIReportBuilder />;
+  }
+
   const handleFormSubmit = async (terms: ProductTerms) => {
     await generateReport(terms);
     setShowReport(true);
@@ -91,13 +99,28 @@ function App() {
                     Generate professional term sheet reports for Reverse Convertibles and Participation Notes
                   </p>
                 </div>
-                <a
-                  href="#breakfast"
-                  className="flex items-center gap-2 px-5 py-2.5 bg-valura-ink text-white rounded-lg hover:bg-valura-ink/90 transition-colors shadow-md"
-                >
-                  <span>☕</span>
-                  <span className="font-medium">Valura Breakfast</span>
-                </a>
+                <div className="flex items-center gap-3">
+                  {/* AI Mode Toggle */}
+                  <a
+                    href="#ai-builder"
+                    className="group relative flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                  >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                      <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
+                    </svg>
+                    <span className="font-semibold">AI Mode</span>
+                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
+                  </a>
+                  
+                  <a
+                    href="#breakfast"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-valura-ink text-white rounded-lg hover:bg-valura-ink/90 transition-colors shadow-md"
+                  >
+                    <span>☕</span>
+                    <span className="font-medium">Valura Breakfast</span>
+                  </a>
+                </div>
               </div>
             </div>
           </div>
