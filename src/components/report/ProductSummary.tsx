@@ -81,9 +81,24 @@ export function ProductSummary({ terms }: ProductSummaryProps) {
 
   specs.push(
     {
+      label: 'Coupon Type',
+      value: terms.couponType === 'guaranteed' ? 'Guaranteed' : 'Conditional',
+    },
+    {
       label: 'Coupon Frequency',
       value: frequencyToString(terms.couponFreqPerYear),
-    },
+    }
+  );
+
+  // Add trigger level if conditional coupons
+  if (terms.couponType === 'conditional' && terms.couponTriggerLevelPct) {
+    specs.push({
+      label: 'Coupon Trigger',
+      value: formatPercent(terms.couponTriggerLevelPct, 0),
+    });
+  }
+
+  specs.push(
     {
       label: 'Maturity',
       value: formatDate(maturityDate, 'short'),

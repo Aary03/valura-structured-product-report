@@ -117,6 +117,7 @@ export function PdfReverseConvertibleReport({ reportData }: { reportData: Revers
     const { terms, underlyingData } = reportData;
     const triggerPct = terms.barrierPct ?? terms.strikePct ?? 0;
     const triggerLabel = terms.variant === 'low_strike_geared_put' ? 'Strike' : 'Barrier';
+    const barrierOrStrikeValue = formatPercent(triggerPct, 0);
     const underlyingsLabel =
       terms.basketType === 'worst_of'
         ? terms.underlyings.map((u) => u.ticker).join(' / ')
@@ -149,6 +150,7 @@ export function PdfReverseConvertibleReport({ reportData }: { reportData: Revers
     return {
       triggerPct,
       triggerLabel,
+      barrierOrStrikeValue,
       underlyingsLabel,
       tableRows,
       scenarioRows,
@@ -158,6 +160,7 @@ export function PdfReverseConvertibleReport({ reportData }: { reportData: Revers
   }, [reportData]);
 
   const { terms, underlyingData, historicalData, curvePoints, intrinsicValue, barrierLevel, strikeLevel, breakEvenPct, totalCouponsPct } = reportData;
+  const { barrierOrStrikeValue } = computed;
   const couponRateText = formatPercent(terms.couponRatePA, 1);
   const couponFreqText =
     terms.couponFreqPerYear === 12 ? 'Monthly' :
@@ -238,9 +241,19 @@ export function PdfReverseConvertibleReport({ reportData }: { reportData: Revers
                 <div className="v">{formatPercent(computed.triggerPct, 0)}</div>
               </div>
               <div className="pdf-spec-item">
+                <div className="k">Coupon Type</div>
+                <div className="v">{terms.couponType === 'guaranteed' ? 'Guaranteed' : 'Conditional'}</div>
+              </div>
+              <div className="pdf-spec-item">
                 <div className="k">Coupon Frequency</div>
                 <div className="v">{couponFreqText}</div>
               </div>
+              {terms.couponType === 'conditional' && terms.couponTriggerLevelPct && (
+                <div className="pdf-spec-item">
+                  <div className="k">Coupon Trigger</div>
+                  <div className="v">{formatPercent(terms.couponTriggerLevelPct, 0)}</div>
+                </div>
+              )}
               <div className="pdf-spec-item">
                 <div className="k">Settlement</div>
                 <div className="v">Cash / Shares</div>
@@ -538,6 +551,123 @@ export function PdfReverseConvertibleReport({ reportData }: { reportData: Revers
                   </div>
                 );
               })}
+            </div>
+          </div>
+
+          <div style={{ height: 8 }} />
+
+          {/* Scenario Analysis Section */}
+          <div className="pdf-card avoid-break">
+            <div className="pdf-section-title">What happens at maturity?</div>
+            <div className="pdf-mini pdf-muted" style={{ marginBottom: 8 }}>
+              Outcome depends on whether the worst-performing stock stays above or below the {computed.triggerLabel.toLowerCase()}.
+            </div>
+            
+            {/* Decision Question */}
+            <div style={{ 
+              background: 'linear-gradient(135deg, #3B82F6 0%, #1E40AF 100%)', 
+              borderRadius: 12, 
+              padding: '12px 14px', 
+              color: 'white',
+              marginBottom: 10
+            }}>
+              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>
+                Does worst-performing stock stay above {barrierOrStrikeValue} at maturity?
+              </div>
+              <div style={{ fontSize: 11, opacity: 0.9 }}>
+                {terms.basketType === 'worst_of' 
+                  ? `Worst-of basket: ${computed.underlyingsLabel}` 
+                  : `Single underlying: ${computed.underlyingsLabel}`}
+              </div>
+            </div>
+
+            {/* Two outcomes side by side */}
+            <div className="pdf-grid-2-eq">
+              {/* YES - Cash */}
+              <div style={{ 
+                border: '2px solid rgba(16,185,129,0.4)', 
+                background: 'rgba(16,185,129,0.08)', 
+                borderRadius: 10, 
+                padding: 10 
+              }}>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 6, 
+                  marginBottom: 6,
+                  fontWeight: 700,
+                  fontSize: 12,
+                  color: '#059669'
+                }}>
+                  <div style={{ 
+                    width: 24, 
+                    height: 24, 
+                    borderRadius: '50%', 
+                    background: '#10b981', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    color: 'white',
+                    fontSize: 16,
+                    fontWeight: 'bold'
+                  }}>✓</div>
+                  YES
+                </div>
+                <div className="pdf-mini" style={{ color: '#059669', fontWeight: 600, marginBottom: 4 }}>
+                  Stocks Stay Above {computed.triggerLabel}
+                </div>
+                <div className="pdf-mini pdf-muted">
+                  <div>✓ You get back all your money (100%)</div>
+                  <div>✓ Plus {couponRateText} annual income paid {couponFreqText.toLowerCase()}</div>
+                  <div>✓ Total return: ~{formatPercent(1 + (terms.couponRatePA * terms.tenorMonths / 12), 0)} after {terms.tenorMonths} months</div>
+                </div>
+                <div className="pdf-mini pdf-muted" style={{ marginTop: 6, fontStyle: 'italic', fontSize: 9 }}>
+                  If you invest $100k, you receive ${formatNumber(terms.notional * (1 + terms.couponRatePA * terms.tenorMonths / 12), 0)}
+                </div>
+              </div>
+
+              {/* NO - Shares */}
+              <div style={{ 
+                border: '2px solid rgba(239,68,68,0.4)', 
+                background: 'rgba(239,68,68,0.08)', 
+                borderRadius: 10, 
+                padding: 10 
+              }}>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 6, 
+                  marginBottom: 6,
+                  fontWeight: 700,
+                  fontSize: 12,
+                  color: '#dc2626'
+                }}>
+                  <div style={{ 
+                    width: 24, 
+                    height: 24, 
+                    borderRadius: '50%', 
+                    background: '#ef4444', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    color: 'white',
+                    fontSize: 16,
+                    fontWeight: 'bold'
+                  }}>✕</div>
+                  NO
+                </div>
+                <div className="pdf-mini" style={{ color: '#dc2626', fontWeight: 600, marginBottom: 4 }}>
+                  Stocks Drop Below {computed.triggerLabel}
+                </div>
+                <div className="pdf-mini pdf-muted">
+                  <div>⚠ Instead of cash, you receive shares of the worst-performing stock</div>
+                  <div>✓ You still keep all your coupon payments</div>
+                  <div>⚠ Final value depends on how far stocks fell</div>
+                </div>
+                <div className="pdf-mini pdf-muted" style={{ marginTop: 6, fontStyle: 'italic', fontSize: 9 }}>
+                  If worst stock drops to 43%, you get ~43% back in shares + {formatPercent(totalCouponsPct, 1)} coupons = ~{formatPercent(0.43 + totalCouponsPct, 0)} total
+                </div>
+              </div>
             </div>
           </div>
 

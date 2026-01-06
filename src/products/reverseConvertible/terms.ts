@@ -15,6 +15,11 @@ export type ReverseConvertibleVariant =
   | 'low_strike_geared_put';
 
 /**
+ * Coupon type for Reverse Convertible
+ */
+export type CouponType = 'guaranteed' | 'conditional';
+
+/**
  * Reverse Convertible product terms
  */
 export interface ReverseConvertibleTerms {
@@ -36,7 +41,8 @@ export interface ReverseConvertibleTerms {
   // Coupon terms
   couponRatePA: number; // Annual coupon rate (e.g., 0.10 = 10%)
   couponFreqPerYear: CouponFrequency; // 12=monthly, 4=quarterly, 2=semi-annual, 1=annual
-  couponCondition: 'unconditional'; // v1: always paid
+  couponType: CouponType; // 'guaranteed' or 'conditional'
+  couponTriggerLevelPct?: number; // Required if couponType = 'conditional' (e.g., 0.60 = 60%)
   
   // Conversion terms
   conversionRatio: number; // CR, default 1.0
@@ -76,6 +82,13 @@ export function validateReverseConvertibleTerms(
   
   if (terms.couponRatePA < 0 || terms.couponRatePA > 1) {
     errors.push('Coupon rate must be between 0 and 1 (0% to 100%)');
+  }
+  
+  // Coupon type validation
+  if (terms.couponType === 'conditional') {
+    if (terms.couponTriggerLevelPct === undefined || terms.couponTriggerLevelPct <= 0 || terms.couponTriggerLevelPct > 1) {
+      errors.push('Coupon trigger level must be between 0 and 1 (0% to 100%) when coupon type is conditional');
+    }
   }
   
   if (terms.conversionRatio <= 0) {
@@ -154,7 +167,7 @@ export function getDefaultReverseConvertibleTerms(): ReverseConvertibleTerms {
     tenorMonths: 12,
     couponRatePA: 0.10, // 10%
     couponFreqPerYear: 4, // Quarterly
-    couponCondition: 'unconditional',
+    couponType: 'guaranteed', // Default to guaranteed
     conversionRatio: 1.0,
     variant: 'standard_barrier_rc',
     barrierPct: 0.70,

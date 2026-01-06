@@ -39,6 +39,8 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
     tenorMonths: '12',
     couponRate: '10', // Percentage
     couponFrequency: 'quarterly',
+    couponType: 'guaranteed' as 'guaranteed' | 'conditional',
+    couponTriggerLevelPct: '60', // Percentage
     variant: 'standard_barrier_rc' as ReverseConvertibleVariant,
     barrierPct: '70', // Percentage
     strikePct: '55', // Percentage
@@ -231,7 +233,10 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
         tenorMonths: parseInt(rcFormData.tenorMonths),
         couponRatePA: parseFloat(rcFormData.couponRate) / 100, // Convert % to decimal
         couponFreqPerYear: frequencyFromString(rcFormData.couponFrequency),
-        couponCondition: 'unconditional',
+        couponType: rcFormData.couponType,
+        couponTriggerLevelPct: rcFormData.couponType === 'conditional' 
+          ? parseFloat(rcFormData.couponTriggerLevelPct) / 100
+          : undefined,
         conversionRatio: parseFloat(rcFormData.conversionRatio),
         variant: rcFormData.variant,
       };
@@ -565,6 +570,45 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
                     <option value="annual">Annual</option>
                   </select>
                 </div>
+
+                <div>
+                  <label className="label">Coupon Type</label>
+                  <select
+                    className="input-field"
+                    value={rcFormData.couponType}
+                    onChange={(e) => handleRcChange('couponType', e.target.value)}
+                  >
+                    <option value="guaranteed">Guaranteed (Always Paid)</option>
+                    <option value="conditional">Conditional (Trigger-Based)</option>
+                  </select>
+                  <p className="text-sm text-muted mt-1">
+                    {rcFormData.couponType === 'guaranteed' 
+                      ? 'Coupons are always paid regardless of performance'
+                      : 'Coupons only paid if underlying meets trigger level'}
+                  </p>
+                </div>
+
+                {rcFormData.couponType === 'conditional' && (
+                  <div>
+                    <label className="label">Coupon Trigger Level (%)</label>
+                    <input
+                      type="number"
+                      className="input-field"
+                      value={rcFormData.couponTriggerLevelPct}
+                      onChange={(e) => handleRcChange('couponTriggerLevelPct', e.target.value)}
+                      required
+                      min="0"
+                      max="100"
+                      step="0.1"
+                    />
+                    {errors.couponTriggerLevelPct && (
+                      <p className="text-danger-fg text-sm mt-1">{errors.couponTriggerLevelPct}</p>
+                    )}
+                    <p className="text-sm text-muted mt-1">
+                      Minimum performance level required for coupon payment
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Autocall Section */}
