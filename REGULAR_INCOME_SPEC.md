@@ -15,7 +15,7 @@
 ## Product Characteristics
 
 This product combines:
-- **Regular coupon payments** (unconditional in v1)
+- **Regular coupon payments** (guaranteed or conditional)
 - **Capital at risk** if barrier/strike breached
 - **Physical conversion** to underlying shares on breach
 - **Optional autocall** for early redemption
@@ -103,12 +103,23 @@ This product combines:
   - `1` - Annual
 - **Default:** `4` (quarterly)
 
-### Coupon Condition
-- **Field Name:** `couponCondition`
+### Coupon Type
+- **Field Name:** `couponType`
 - **Type:** String
-- **Fixed Value:** `'unconditional'`
-- **Description:** Coupons are always paid (v1 feature)
-- **Note:** Future versions may support conditional coupons
+- **Options:**
+  - `'guaranteed'` - Coupons are always paid (unconditional)
+  - `'conditional'` - Coupons paid only if trigger condition met
+- **Default:** `'guaranteed'`
+- **Description:** Determines whether coupons are unconditional or conditional on trigger level
+
+### Coupon Trigger Level (Required if Conditional)
+- **Field Name:** `couponTriggerLevelPct`
+- **Type:** Number (decimal format)
+- **Example:** 0.60 = 60% trigger level
+- **Range:** 0 to 1 (0% to 100%)
+- **Required:** Yes (if couponType = 'conditional')
+- **Description:** Minimum performance level for coupon payment
+- **Note:** Coupons only paid if underlying(s) at or above this level at observation date
 
 ---
 
@@ -208,13 +219,17 @@ This product combines:
 7. `initialFixings` array length must match underlyings array length
 8. All initial fixings must be > 0
 
+### Coupon Validation
+9. `couponType` must be either 'guaranteed' or 'conditional'
+10. If `couponType = 'conditional'`: `couponTriggerLevelPct` required and between 0-1
+
 ### Variant-Specific Validation
-9. If `variant = 'standard_barrier_rc'`: `barrierPct` required and between 0-1
-10. If `variant = 'low_strike_geared_put'`: `strikePct` required and between 0-1
-11. If `knockInBarrierPct` provided: must be between 0-1 and ≤ strikePct
+11. If `variant = 'standard_barrier_rc'`: `barrierPct` required and between 0-1
+12. If `variant = 'low_strike_geared_put'`: `strikePct` required and between 0-1
+13. If `knockInBarrierPct` provided: must be between 0-1 and ≤ strikePct
 
 ### Autocall Validation
-12. If `autocallEnabled = true`: `autocallLevelPct` required and between 0-2.0
+14. If `autocallEnabled = true`: `autocallLevelPct` required and between 0-2.0
 
 ---
 
@@ -237,7 +252,8 @@ interface RegularIncomeTerms {
   // Coupon
   couponRatePA: number;
   couponFreqPerYear: CouponFrequency;
-  couponCondition: 'unconditional';
+  couponType: CouponType;
+  couponTriggerLevelPct?: number; // Required if couponType = 'conditional'
   
   // Variant Selection
   variant: ReverseConvertibleVariant;
@@ -264,6 +280,7 @@ interface Underlying {
 
 type Currency = 'USD' | 'EUR' | 'GBP' | 'JPY';
 type CouponFrequency = 12 | 4 | 2 | 1;
+type CouponType = 'guaranteed' | 'conditional';
 type ReverseConvertibleVariant = 'standard_barrier_rc' | 'low_strike_geared_put';
 ```
 
@@ -290,7 +307,8 @@ type ReverseConvertibleVariant = 'standard_barrier_rc' | 'low_strike_geared_put'
 4. **Coupon Configuration**
    - Annual coupon rate (%) input
    - Frequency dropdown (Monthly/Quarterly/Semi-annual/Annual)
-   - Condition display (fixed to "Unconditional" for v1)
+   - Coupon type selector (Guaranteed / Conditional)
+   - Trigger level input (only shown if Conditional selected)
 
 5. **Variant Selector** (Radio buttons or tabs)
    - Standard Barrier RC
@@ -315,20 +333,27 @@ type ReverseConvertibleVariant = 'standard_barrier_rc' | 'low_strike_geared_put'
 ### UI/UX Recommendations
 
 - **Coupon Highlight:** Display projected annual income in prominent card
+- **Coupon Type Toggle:** Clear visual distinction between guaranteed and conditional coupons
+- **Conditional Coupon Warning:** If conditional selected, show "Coupons only paid if trigger met"
+- **Trigger Level Visualization:** Show trigger level on graph/chart if conditional
 - **Variant Switcher:** Clear visual distinction between two variants
 - **Conditional Fields:** Show/hide barrier or strike fields based on variant
 - **Autocall Preview:** Show potential early redemption dates when enabled
-- **Income Calculator:** Display projected coupon amounts and payment schedule
-- **Risk Warning:** Clear indication of conversion risk
+- **Income Calculator:** Display projected coupon amounts and payment schedule (with asterisk for conditional)
+- **Risk Warning:** Clear indication of conversion risk and coupon payment risk (if conditional)
 
 ---
 
 ## Payoff Logic Summary
 
 ### Coupon Payments
-- **Always paid** (unconditional in v1)
 - **Amount:** `notional × couponRatePA / couponFreqPerYear`
 - **Frequency:** Based on couponFreqPerYear
+- **Payment Condition:**
+  - **If Guaranteed:** Coupons always paid at each observation date
+  - **If Conditional:** Coupons paid only if underlying(s) ≥ couponTriggerLevelPct at observation date
+    - For single basket: underlying ≥ trigger level
+    - For worst-of basket: worst performing underlying ≥ trigger level
 
 ### Autocall (if enabled)
 - **Checked at:** Each observation date (based on autocallFrequency)
@@ -383,7 +408,7 @@ type ReverseConvertibleVariant = 'standard_barrier_rc' | 'low_strike_geared_put'
 
 ## Example Configurations
 
-### Example 1: Standard Barrier RC (Single Underlying)
+### Example 1: Standard Barrier RC with Guaranteed Coupons (Single Underlying)
 
 ```typescript
 const standardRC: RegularIncomeTerms = {
@@ -396,18 +421,18 @@ const standardRC: RegularIncomeTerms = {
   underlyings: [{ ticker: 'AAPL', name: 'Apple Inc.' }],
   initialFixings: [150.00],
   
-  couponRatePA: 0.10,  // 10% annual
-  couponFreqPerYear: 4, // Quarterly
-  couponCondition: 'unconditional',
+  couponRatePA: 0.10,      // 10% annual
+  couponFreqPerYear: 4,    // Quarterly
+  couponType: 'guaranteed', // Always paid
   
   variant: 'standard_barrier_rc',
-  barrierPct: 0.70,    // 70% barrier
+  barrierPct: 0.70,        // 70% barrier
   
   autocallEnabled: false,
 };
 ```
 
-### Example 2: Low Strike Geared Put with Autocall (Worst-of)
+### Example 2: Low Strike Geared Put with Conditional Coupons and Autocall (Worst-of)
 
 ```typescript
 const gearedPutRC: RegularIncomeTerms = {
@@ -423,18 +448,44 @@ const gearedPutRC: RegularIncomeTerms = {
   ],
   initialFixings: [150.00, 350.00],
   
-  couponRatePA: 0.12,  // 12% annual
-  couponFreqPerYear: 4, // Quarterly
-  couponCondition: 'unconditional',
+  couponRatePA: 0.12,              // 12% annual
+  couponFreqPerYear: 4,            // Quarterly
+  couponType: 'conditional',       // Conditional coupons
+  couponTriggerLevelPct: 0.60,    // 60% trigger level
   
   variant: 'low_strike_geared_put',
-  strikePct: 0.55,         // 55% strike
-  knockInBarrierPct: 0.55, // 55% knock-in
+  strikePct: 0.55,                 // 55% strike
+  knockInBarrierPct: 0.55,         // 55% knock-in
   conversionRatio: 1.0,
   
   autocallEnabled: true,
-  autocallLevelPct: 1.00,  // 100% autocall
-  autocallFrequency: 4,    // Quarterly observations
+  autocallLevelPct: 1.00,          // 100% autocall
+  autocallFrequency: 4,            // Quarterly observations
+};
+```
+
+### Example 3: Standard Barrier RC with Conditional Coupons (Single Underlying)
+
+```typescript
+const conditionalCouponRC: RegularIncomeTerms = {
+  productType: 'RC',
+  notional: 100000,
+  currency: 'USD',
+  tenorMonths: 12,
+  
+  basketType: 'single',
+  underlyings: [{ ticker: 'TSLA', name: 'Tesla Inc.' }],
+  initialFixings: [250.00],
+  
+  couponRatePA: 0.15,              // 15% annual (higher rate for conditional)
+  couponFreqPerYear: 4,            // Quarterly
+  couponType: 'conditional',       // Conditional coupons
+  couponTriggerLevelPct: 0.65,    // 65% trigger level
+  
+  variant: 'standard_barrier_rc',
+  barrierPct: 0.60,                // 60% barrier
+  
+  autocallEnabled: false,
 };
 ```
 
@@ -452,7 +503,12 @@ This product is distinguished by:
 
 ---
 
-**Document Version:** 1.0  
+**Document Version:** 1.1  
 **Last Updated:** January 6, 2026  
 **Status:** Standalone Module - Ready for Implementation
+
+**Changelog:**
+- v1.1: Added coupon type field (guaranteed/conditional) and coupon trigger level field
+- v1.0: Initial release
+
 
