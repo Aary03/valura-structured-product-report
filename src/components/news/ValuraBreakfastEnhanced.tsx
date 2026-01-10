@@ -5,9 +5,8 @@
 
 import { useState, useEffect } from 'react';
 import { fetchMarketNews } from '../../services/api/marketaux';
-import type { MarketauxNewsArticle } from '../../services/api/marketaux';
-import { processArticles, formatTimeAgo } from '../../services/newsAggregator';
-import type { ProcessedNewsArticle, SentimentCategory } from '../../services/newsAggregator';
+import { processArticles } from '../../services/newsAggregator';
+import type { ProcessedNewsArticle } from '../../services/newsAggregator';
 import { NewsCard } from './NewsCard';
 import { BreakingNewsBanner } from './BreakingNewsBanner';
 import { TrendingUp, TrendingDown, Newspaper, BarChart3, Mail } from 'lucide-react';
