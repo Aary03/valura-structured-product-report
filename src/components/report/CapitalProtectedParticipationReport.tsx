@@ -143,21 +143,25 @@ export function CapitalProtectedParticipationReport({ reportData }: CapitalProte
           {/* Suitability */}
           <SuitabilitySection productType="CPPN" />
 
-          {/* Underlyings Spotlight */}
-          <UnderlyingsSpotlight
-            underlyingData={underlyingData}
-            historicalData={historicalData}
-            terms={terms}
-            worstUnderlyingIndex={terms.basketType === 'worst_of' ? reportData.worstUnderlyingIndex : null}
-            onSummariesLoaded={setSummaries}
-          />
+          {/* Underlyings Spotlight - REMOVED: Now integrated into Combined Cards below */}
+          {/* The new UnderlyingCombinedCard includes all spotlight metrics in tabs */}
+          <div style={{ display: 'none' }}>
+            <UnderlyingsSpotlight
+              underlyingData={underlyingData}
+              historicalData={historicalData}
+              terms={terms}
+              worstUnderlyingIndex={terms.basketType === 'worst_of' ? reportData.worstUnderlyingIndex : null}
+              onSummariesLoaded={setSummaries}
+            />
+          </div>
 
-          {/* Company Backgrounds - Full Width */}
+          {/* Underlying Analysis Hub - Full Width (Combines Spotlight + Company Info) */}
           {summaries.length > 0 && (
             <CompanyDescriptions 
               summaries={summaries} 
               productType="CPPN"
               barrierPct={terms.knockInEnabled ? terms.knockInBarrier : 0}
+              productTerms={terms}
             />
           )}
 

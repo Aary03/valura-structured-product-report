@@ -155,21 +155,25 @@ export function ReverseConvertibleReport({ reportData }: ReverseConvertibleRepor
           {/* Suitability - Full Width */}
           <SuitabilitySection />
 
-          {/* Underlyings Spotlight - Full Width */}
-          <UnderlyingsSpotlight
-            underlyingData={underlyingData}
-            historicalData={historicalData}
-            terms={terms}
-            worstUnderlyingIndex={reportData.worstUnderlyingIndex}
-            onSummariesLoaded={setSummaries}
-          />
+          {/* Underlyings Spotlight - REMOVED: Now integrated into Combined Cards below */}
+          {/* The new UnderlyingCombinedCard includes all spotlight metrics in tabs */}
+          <div style={{ display: 'none' }}>
+            <UnderlyingsSpotlight
+              underlyingData={underlyingData}
+              historicalData={historicalData}
+              terms={terms}
+              worstUnderlyingIndex={reportData.worstUnderlyingIndex}
+              onSummariesLoaded={setSummaries}
+            />
+          </div>
 
-          {/* Company Backgrounds - Full Width */}
+          {/* Underlying Analysis Hub - Full Width (Combines Spotlight + Company Info) */}
           {summaries.length > 0 && (
             <CompanyDescriptions 
               summaries={summaries} 
               productType="RC"
               barrierPct={barrierLevel}
+              productTerms={terms}
             />
           )}
 

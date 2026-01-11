@@ -1,10 +1,11 @@
 /**
  * AI Investment Insights Service
  * Generate intelligent, actionable insights for investors using GPT-4
- * Now enhanced with real-time market data and comprehensive analysis
+ * Now enhanced with real-time market data, comprehensive analysis, and live news
  */
 
 import { fetchMarketIntelligence, formatMarketIntelligenceForAI } from './marketIntelligence';
+import { generateLiveNewsInsights } from './ai/liveNewsInsights';
 
 // Get API key from environment variable
 const OPENAI_API_KEY = (import.meta as unknown as { env: { VITE_OPENAI_API_KEY?: string } }).env.VITE_OPENAI_API_KEY || '';
@@ -15,6 +16,17 @@ export interface InvestmentInsights {
   considerations: string[]; // 3 key considerations/risks
   suitedFor: string; // Who this investment suits
   quickTake: string; // One-line summary
+  liveNews?: {
+    latestHeadlines: Array<{
+      headline: string;
+      sentiment: 'positive' | 'neutral' | 'negative';
+      summary: string;
+      date: string;
+      source: string;
+    }>;
+    keyDevelopments: string[];
+    marketSentiment: string;
+  };
 }
 
 interface GenerateInsightsRequest {
@@ -156,7 +168,7 @@ FORMAT REQUIREMENTS:
         'Authorization': `Bearer ${OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o',
         messages: [
           {
             role: 'system',
@@ -186,6 +198,30 @@ FORMAT REQUIREMENTS:
     }
 
     const insights = JSON.parse(content);
+    
+    // Fetch live news in parallel (don't block main insights)
+    try {
+      const liveNews = await generateLiveNewsInsights(symbol, companyName, sector, industry);
+      if (liveNews) {
+        return {
+          ...insights,
+          liveNews: {
+            latestHeadlines: liveNews.latestNews.map(news => ({
+              headline: news.headline,
+              sentiment: news.sentiment,
+              summary: news.summary,
+              date: news.date,
+              source: news.source,
+            })),
+            keyDevelopments: liveNews.keyDevelopments,
+            marketSentiment: liveNews.marketSentiment.summary,
+          },
+        } as InvestmentInsights;
+      }
+    } catch (newsError) {
+      console.warn('Failed to fetch live news, returning insights without news:', newsError);
+    }
+    
     return insights as InvestmentInsights;
   } catch (error) {
     console.error('Error generating investment insights:', error);
@@ -241,7 +277,7 @@ Provide a clear, professional answer in 2-4 sentences. Use the REAL-TIME market 
         'Authorization': `Bearer ${OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o',
         messages: [
           {
             role: 'system',

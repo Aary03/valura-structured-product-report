@@ -1,30 +1,48 @@
 /**
  * Company Description Card Component
- * Beautiful card showing company background, description, and key details
+ * Beautiful card showing company background, description, key details, and AI analysis
+ * Now includes "Why This Stock?" feature with comprehensive product-specific explanations
  */
 
 import { useState, useEffect } from 'react';
 import type { UnderlyingSummary } from '../../services/underlyingSummary';
+import type { ReverseConvertibleTerms } from '../../products/reverseConvertible/terms';
+import type { CapitalProtectedParticipationTerms } from '../../products/capitalProtectedParticipation/terms';
 import { CardShell } from '../common/CardShell';
-import { User, MapPin, Globe, ChevronDown, ChevronUp, Building2, Calendar, Loader2 } from 'lucide-react';
+import { User, MapPin, Globe, ChevronDown, ChevronUp, Building2, Calendar, Loader2, Sparkles } from 'lucide-react';
 import { getLogoWithFallback } from '../../utils/logo';
 import { generateInvestmentInsights, type InvestmentInsights } from '../../services/aiInsights';
 import { AIInsightsCard } from './AIInsightsCard';
+import { generateWhyThisStock, getCachedWhyThisStock, cacheWhyThisStock, type WhyThisStockResponse } from '../../services/ai/whyThisStock';
+import { WhyThisStockCard } from './WhyThisStockCard';
+import { AIThinkingLoader } from '../common/AIThinkingLoader';
+
+type ProductTerms = ReverseConvertibleTerms | CapitalProtectedParticipationTerms;
 
 interface CompanyDescriptionCardProps {
   summary: UnderlyingSummary;
   productType?: 'RC' | 'CPPN';
   barrierPct?: number;
+  productTerms?: ProductTerms;
+  basketType?: 'single' | 'worst_of' | 'best_of' | 'average';
+  basketPosition?: string;
 }
 
 export function CompanyDescriptionCard({ 
   summary, 
   productType = 'RC', 
-  barrierPct = 0.7 
+  barrierPct = 0.7,
+  productTerms,
+  basketType = 'single',
+  basketPosition
 }: CompanyDescriptionCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [insights, setInsights] = useState<InvestmentInsights | null>(null);
   const [loadingInsights, setLoadingInsights] = useState(false);
+  const [whyThisStock, setWhyThisStock] = useState<WhyThisStockResponse | null>(null);
+  const [loadingWhyThisStock, setLoadingWhyThisStock] = useState(false);
+  const [showWhyThisStock, setShowWhyThisStock] = useState(false);
+  const [lastGeneratedTime, setLastGeneratedTime] = useState<number>(0);
   const { logoUrl, fallback } = getLogoWithFallback(summary.symbol, summary.name);
 
   // Don't render if no description
@@ -60,6 +78,85 @@ export function CompanyDescriptionCard({
 
     fetchInsights();
   }, [summary.symbol]);
+
+  // Handle "Why This Stock?" generation
+  const handleGenerateWhyThisStock = async () => {
+    // Rate limiting: 30 seconds cooldown
+    const now = Date.now();
+    if (now - lastGeneratedTime < 30000) {
+      alert('Please wait 30 seconds before regenerating.');
+      return;
+    }
+
+    if (!productTerms) {
+      console.warn('Product terms not provided for Why This Stock generation');
+      return;
+    }
+
+    // Check cache first
+    const productTermsForCache = {
+      barrierPct: productType === 'RC' ? (productTerms as ReverseConvertibleTerms).barrierPct : undefined,
+      couponRatePct: productType === 'RC' ? (productTerms as ReverseConvertibleTerms).couponRatePct : undefined,
+      couponFreqPerYear: productType === 'RC' ? (productTerms as ReverseConvertibleTerms).couponFreqPerYear : undefined,
+      participationStartPct: productType === 'CPPN' ? (productTerms as CapitalProtectedParticipationTerms).participationStartPct : undefined,
+      participationRatePct: productType === 'CPPN' ? (productTerms as CapitalProtectedParticipationTerms).participationRatePct : undefined,
+      capitalProtectionPct: productType === 'CPPN' ? (productTerms as CapitalProtectedParticipationTerms).capitalProtectionPct : undefined,
+      bonusLevelPct: productType === 'CPPN' ? (productTerms as CapitalProtectedParticipationTerms).bonusLevelPct : undefined,
+      bonusBarrierPct: productType === 'CPPN' ? (productTerms as CapitalProtectedParticipationTerms).bonusBarrierPct : undefined,
+      capLevelPct: productType === 'CPPN' ? (productTerms as CapitalProtectedParticipationTerms).capLevelPct : undefined,
+      knockInEnabled: productType === 'CPPN' ? (productTerms as CapitalProtectedParticipationTerms).knockInEnabled : undefined,
+      knockInLevelPct: productType === 'CPPN' ? (productTerms as CapitalProtectedParticipationTerms).knockInLevelPct : undefined,
+    };
+
+    const cached = getCachedWhyThisStock(summary.symbol, productTermsForCache);
+    if (cached && !showWhyThisStock) {
+      setWhyThisStock(cached);
+      setShowWhyThisStock(true);
+      return;
+    }
+
+    setLoadingWhyThisStock(true);
+    setShowWhyThisStock(true);
+
+    try {
+      const result = await generateWhyThisStock({
+        symbol: summary.symbol,
+        companyName: summary.name,
+        description: summary.description || '',
+        sector: summary.sector || 'N/A',
+        industry: summary.industry || 'N/A',
+        spotPrice: summary.spotPrice,
+        performancePct: summary.performancePct || 0,
+        distanceToBarrier: summary.distanceToBarrier || 0,
+        volatility30d: summary.volatility30d,
+        beta: summary.beta,
+        analystConsensus: summary.analystConsensus,
+        targetUpside: summary.targetUpside,
+        momentum20d: summary.momentum20d,
+        pe: summary.pe,
+        marketCap: summary.marketCap,
+        productType,
+        productTerms: productTermsForCache,
+        basketType,
+        basketPosition,
+      });
+
+      if (result) {
+        setWhyThisStock(result);
+        cacheWhyThisStock(summary.symbol, productTermsForCache, result);
+        setLastGeneratedTime(now);
+      } else {
+        alert('Failed to generate analysis. Please try again.');
+        setShowWhyThisStock(false);
+      }
+    } catch (error) {
+      console.error('Error generating Why This Stock:', error);
+      alert('Failed to generate analysis. Please try again.');
+      setShowWhyThisStock(false);
+    } finally {
+      setLoadingWhyThisStock(false);
+    }
+  };
 
   const hasMoreContent = summary.description.length > 400;
 
@@ -272,13 +369,64 @@ export function CompanyDescriptionCard({
         </div>
       )}
 
+      {/* Why This Stock? Section */}
+      {productTerms && (
+        <div className="mt-6 pt-6 border-t-2 border-border relative z-10">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-2">
+              <div className="w-1 h-6 bg-gradient-to-b from-indigo-500 to-purple-500 rounded-full"></div>
+              <h4 className="text-base font-bold text-text-primary uppercase tracking-wide">
+                Why This Stock for This Product?
+              </h4>
+            </div>
+            {!showWhyThisStock && (
+              <button
+                onClick={handleGenerateWhyThisStock}
+                disabled={loadingWhyThisStock}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white hover:shadow-lg hover:scale-105 transition-all duration-200 flex items-center space-x-2 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  boxShadow: '0 4px 14px 0 rgba(99, 102, 241, 0.3)',
+                }}
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>{loadingWhyThisStock ? 'Generating...' : 'Generate Analysis'}</span>
+              </button>
+            )}
+          </div>
+
+          {loadingWhyThisStock && (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mr-3" />
+              <span className="text-base text-text-secondary">Analyzing why this stock fits your product...</span>
+            </div>
+          )}
+
+          {showWhyThisStock && whyThisStock && !loadingWhyThisStock && (
+            <WhyThisStockCard
+              response={whyThisStock}
+              symbol={summary.symbol}
+              companyName={summary.name}
+              onRegenerate={handleGenerateWhyThisStock}
+              isRegenerating={loadingWhyThisStock}
+            />
+          )}
+
+          {!showWhyThisStock && !loadingWhyThisStock && (
+            <div className="p-6 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 rounded-xl border-2 border-indigo-200">
+              <p className="text-sm text-text-secondary text-center">
+                Click <span className="font-semibold text-indigo-600">"Generate Analysis"</span> to see a comprehensive AI-powered explanation
+                of why {summary.name} is suitable for this structured product, including product suitability,
+                investment thesis, and risk/reward profile.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* AI Investment Insights */}
       <div className="mt-6 relative z-10">
         {loadingInsights && (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-6 h-6 animate-spin text-primary mr-2" />
-            <span className="text-sm text-text-secondary">Generating AI insights...</span>
-          </div>
+          <AIThinkingLoader message="Generating AI insights with live news..." showFacts={true} />
         )}
         
         {insights && !loadingInsights && (

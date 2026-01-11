@@ -43,7 +43,7 @@ async function callOpenAI(prompt: string, maxTokens: number = 1500): Promise<str
       'Authorization': `Bearer ${OPENAI_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
+      model: 'gpt-4o',
       messages: [
         {
           role: 'system',

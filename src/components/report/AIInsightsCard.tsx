@@ -7,7 +7,7 @@ import { useState } from 'react';
 import type { InvestmentInsights } from '../../services/aiInsights';
 import { askAIQuestion } from '../../services/aiInsights';
 import { CardShell } from '../common/CardShell';
-import { Sparkles, TrendingUp, AlertCircle, Target, MessageCircle, Send, Loader2 } from 'lucide-react';
+import { Sparkles, TrendingUp, AlertCircle, Target, MessageCircle, Send, Loader2, Newspaper, TrendingDown, Minus } from 'lucide-react';
 
 interface AIInsightsCardProps {
   insights: InvestmentInsights;
@@ -130,6 +130,90 @@ export function AIInsightsCard({
         </div>
         <p className="text-sm text-text-secondary">{insights.suitedFor}</p>
       </div>
+
+      {/* Live News & Developments */}
+      {insights.liveNews && (
+        <div className="mb-4 p-4 rounded-xl border-2 border-indigo-200 bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+          <div className="flex items-center space-x-2 mb-4">
+            <div className="p-2 bg-indigo-100 rounded-lg">
+              <Newspaper className="w-5 h-5 text-indigo-600" />
+            </div>
+            <div className="flex-1">
+              <h5 className="text-sm font-bold text-indigo-900 uppercase tracking-wide">
+                Latest News & Developments
+              </h5>
+              <div className="flex items-center space-x-1 mt-0.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                <span className="text-xs font-semibold text-indigo-600">AI-POWERED INSIGHTS</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Market Sentiment */}
+          <div className="mb-4 p-3 rounded-lg bg-white/80 border border-indigo-200">
+            <p className="text-sm font-medium text-text-primary">
+              <span className="font-bold text-indigo-600">Market Sentiment:</span>{' '}
+              {insights.liveNews.marketSentiment}
+            </p>
+          </div>
+
+          {/* Key Developments */}
+          {insights.liveNews.keyDevelopments && insights.liveNews.keyDevelopments.length > 0 && (
+            <div className="mb-4">
+              <h6 className="text-xs font-bold text-indigo-800 mb-2 uppercase tracking-wide">
+                Key Developments (Past 7 Days)
+              </h6>
+              <ul className="space-y-2">
+                {insights.liveNews.keyDevelopments.map((dev, idx) => (
+                  <li key={idx} className="flex items-start space-x-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2 flex-shrink-0" />
+                    <span className="text-sm text-text-secondary leading-relaxed">{dev}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Latest Headlines */}
+          {insights.liveNews.latestHeadlines && insights.liveNews.latestHeadlines.length > 0 && (
+            <div>
+              <h6 className="text-xs font-bold text-indigo-800 mb-3 uppercase tracking-wide">
+                Recent Headlines
+              </h6>
+              <div className="space-y-2.5">
+                {insights.liveNews.latestHeadlines.map((news, idx) => {
+                  const SentimentIcon = news.sentiment === 'positive' ? TrendingUp :
+                                       news.sentiment === 'negative' ? TrendingDown : Minus;
+                  const sentimentColor = news.sentiment === 'positive' ? 'text-success-fg bg-success-bg border-success' :
+                                        news.sentiment === 'negative' ? 'text-danger-fg bg-danger-bg border-danger' :
+                                        'text-text-secondary bg-surface-2 border-border';
+                  
+                  return (
+                    <div key={idx} className="p-3 bg-white rounded-lg border border-indigo-100 hover:shadow-sm transition-shadow">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center space-x-2 flex-1">
+                          <div className={`p-1 rounded-md border ${sentimentColor}`}>
+                            <SentimentIcon className="w-3 h-3" />
+                          </div>
+                          <span className="text-xs font-semibold text-indigo-600">{news.source}</span>
+                          <span className="text-xs text-text-tertiary">•</span>
+                          <span className="text-xs text-text-tertiary">{news.date}</span>
+                        </div>
+                      </div>
+                      <p className="text-sm font-semibold text-text-primary mb-1 leading-snug">
+                        {news.headline}
+                      </p>
+                      <p className="text-xs text-text-secondary leading-relaxed">
+                        {news.summary}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Ask AI Button */}
       <button

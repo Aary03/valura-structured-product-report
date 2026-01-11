@@ -13,9 +13,9 @@ import { resolveMultipleCompanies, quickTickerLookup } from './tickerSearch';
 const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
-// Use GPT-4 Turbo (GPT-5.2 not yet in API, will update when available)
-const AI_MODEL = 'gpt-4-turbo-preview';
-const FALLBACK_MODEL = 'gpt-4o-mini';
+// Use latest GPT-4o model for best quality and performance
+const AI_MODEL = 'gpt-4o';
+const FALLBACK_MODEL = 'gpt-4o';
 
 export type ProductType = 'RC' | 'CPPN' | 'Bonus';
 export type ConversationState = 
