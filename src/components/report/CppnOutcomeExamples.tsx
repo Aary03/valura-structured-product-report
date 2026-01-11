@@ -19,10 +19,46 @@ export function CppnOutcomeExamples({
   const a = terms.participationRatePct / 100;
 
   const payoffAt = (X: number) => {
+    // BONUS CERTIFICATE LOGIC
+    if (terms.bonusEnabled && terms.bonusLevelPct != null && terms.bonusBarrierPct != null) {
+      const B = terms.bonusBarrierPct;
+      const BL = terms.bonusLevelPct;
+      const K = terms.participationStartPct;
+      
+      // Check if barrier breached (using final level for European-style)
+      const barrierBreached = X < B;
+      
+      if (!barrierBreached) {
+        // Barrier NOT breached → Bonus protection active
+        if (X < K) {
+          // Below participation start: flat at bonus level
+          return BL;
+        }
+        
+        // Participation starts at K
+        // P = 100 + PR * (X - K)
+        const P = 100 + a * (X - K);
+        
+        // Apply cap if enabled
+        const P_capped = terms.capType === 'capped' && terms.capLevelPct != null 
+          ? Math.min(P, terms.capLevelPct) 
+          : P;
+        
+        // Apply bonus floor: RED = max(BL, P_capped)
+        return Math.max(BL, P_capped);
+      } else {
+        // Barrier breached → 1:1 downside participation
+        return X;
+      }
+    }
+    
+    // KNOCK-IN LOGIC (conditional capital protection)
     if (terms.knockInEnabled && terms.knockInLevelPct != null && X < terms.knockInLevelPct) {
       const S = terms.downsideStrikePct ?? terms.knockInLevelPct;
       return (100 * X) / S;
     }
+    
+    // STANDARD CPPN LOGIC (capital protection + participation)
     const P = terms.capitalProtectionPct;
     const K = terms.participationStartPct;
     const delta = terms.participationDirection === 'up' ? Math.max(0, X - K) : Math.max(0, K - X);
@@ -32,8 +68,22 @@ export function CppnOutcomeExamples({
   };
 
   const regimeLabel = (X: number) => {
-    if (terms.knockInEnabled && terms.knockInLevelPct != null && X < terms.knockInLevelPct) return 'Knock-in (Geared)';
-    if (terms.participationDirection === 'up') return X > terms.participationStartPct ? 'Participating' : 'Protected';
+    // BONUS CERTIFICATE regime labels
+    if (terms.bonusEnabled && terms.bonusBarrierPct != null) {
+      const barrierBreached = X < terms.bonusBarrierPct;
+      if (barrierBreached) return 'Barrier Breached';
+      return X >= terms.participationStartPct ? 'Participating' : 'Protected';
+    }
+    
+    // KNOCK-IN regime labels
+    if (terms.knockInEnabled && terms.knockInLevelPct != null && X < terms.knockInLevelPct) {
+      return 'Knock-in (Geared)';
+    }
+    
+    // STANDARD CPPN regime labels
+    if (terms.participationDirection === 'up') {
+      return X > terms.participationStartPct ? 'Participating' : 'Protected';
+    }
     return X < terms.participationStartPct ? 'Participating' : 'Protected';
   };
 
@@ -97,11 +147,18 @@ export function CppnOutcomeExamples({
       </div>
 
       <p className="text-xs text-muted mt-4 italic">
-        Illustrative only (issuer risk ignored). If Knock-in is enabled and the final level is below KI, payoff switches to 100×(X/S).
+        Illustrative only (issuer risk ignored). 
+        {terms.bonusEnabled && terms.bonusBarrierPct != null && (
+          <span> If the barrier is breached, bonus protection is lost and payoff tracks the stock 1-to-1.</span>
+        )}
+        {terms.knockInEnabled && terms.knockInLevelPct != null && (
+          <span> If Knock-in is enabled and the final level is below KI, payoff switches to 100×(X/S).</span>
+        )}
       </p>
     </CardShell>
   );
 }
+
 
 
 
