@@ -129,13 +129,6 @@ function App() {
                     <span className="font-medium">Track Investments</span>
                   </a>
                   
-                  <a
-                    href="#tracker"
-                    className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg hover:from-emerald-600 hover:to-teal-700 transition-all shadow-md hover:shadow-lg transform hover:scale-105"
-                  >
-                    <span>📊</span>
-                    <span className="font-medium">Position Tracker</span>
-                  </a>
                   
                   <a
                     href="#breakfast"
@@ -169,22 +162,13 @@ function App() {
                 >
                   ← Back to Input
                 </button>
-                <div className="flex items-center gap-2">
-                  <a
-                    href="#tracker"
-                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg hover:from-emerald-600 hover:to-teal-700 transition-all text-sm no-print shadow-md"
-                  >
-                    <span>📊</span>
-                    <span className="font-medium">Tracker</span>
-                  </a>
-                  <a
-                    href="#breakfast"
-                    className="flex items-center gap-2 px-4 py-2 bg-valura-ink text-white rounded-lg hover:bg-valura-ink/90 transition-colors text-sm no-print"
-                  >
-                    <span>☕</span>
-                    <span className="font-medium">Valura Breakfast</span>
-                  </a>
-                </div>
+                <a
+                  href="#breakfast"
+                  className="flex items-center gap-2 px-4 py-2 bg-valura-ink text-white rounded-lg hover:bg-valura-ink/90 transition-colors text-sm no-print"
+                >
+                  <span>☕</span>
+                  <span className="font-medium">Valura Breakfast</span>
+                </a>
               </div>
             </div>
           </div>
