@@ -27,7 +27,7 @@ interface UnderlyingInput {
 
 export function ProductInputForm({ onSubmit, loading = false }: ProductInputFormProps) {
   const [productType, setProductType] = useState<'RC' | 'CPPN'>('RC');
-  const [basketTypeRC, setBasketTypeRC] = useState<'single' | 'worst_of'>('single');
+  const [basketTypeRC, setBasketTypeRC] = useState<'single' | 'worst_of' | 'equally_weighted'>('single');
   const [basketTypeCPPN, setBasketTypeCPPN] = useState<BasketType>('single');
   const [underlyings, setUnderlyings] = useState<UnderlyingInput[]>([
     { symbol: 'AAPL', name: 'Apple Inc.' },
@@ -137,7 +137,7 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
     }
   };
 
-  const ensureUnderlyingCountForBasket = (type: 'single' | 'worst_of' | 'best_of' | 'average') => {
+  const ensureUnderlyingCountForBasket = (type: 'single' | 'worst_of' | 'equally_weighted' | 'best_of' | 'average') => {
     if (type === 'single') {
       setUnderlyings([underlyings[0] || { symbol: '', name: '' }]);
     } else {
@@ -160,7 +160,7 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
     ensureUnderlyingCountForBasket(type);
   };
 
-  const activeBasketType = productType === 'RC' ? basketTypeRC : basketTypeCPPN;
+  const activeBasketType = productType === 'RC' ? (basketTypeRC as any) : basketTypeCPPN;
 
   const canAddUnderlying = useMemo(() => {
     return activeBasketType !== 'single' && underlyings.length < 3;
@@ -506,7 +506,7 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
                       name="basketType"
                       value="equally_weighted"
                       checked={basketTypeRC === 'equally_weighted'}
-                      onChange={() => handleBasketTypeChangeRC('equally_weighted' as any)}
+                      onChange={() => handleBasketTypeChangeRC('equally_weighted')}
                       className="w-5 h-5 text-valura-ink"
                     />
                     <span className="text-valura-ink">Equally Weighted (2-3)</span>
