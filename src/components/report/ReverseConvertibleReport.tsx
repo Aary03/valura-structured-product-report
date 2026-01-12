@@ -23,7 +23,7 @@ import { Footer } from './Footer';
 import { TickerNewsSection } from '../news/TickerNewsSection';
 import { normalizeLevel } from '../../products/common/basket';
 import { addMonths, getCurrentISODate } from '../../core/types/dates';
-import { Download } from 'lucide-react';
+import { Download, Save } from 'lucide-react';
 import { downloadReportPDFServer } from '../../utils/pdfExport';
 import { useState } from 'react';
 import type { UnderlyingSummary } from '../../services/underlyingSummary';
@@ -32,6 +32,7 @@ import { ExportPreviewModal } from '../export/ExportPreviewModal';
 import type { ExportFormat } from '../export/ExportDropdown';
 import { useAIContentGeneration } from '../../hooks/useAIContentGeneration';
 import { downloadAsDocument } from '../../utils/exportContent';
+import { useInvestmentTracker } from '../../hooks/useInvestmentTracker';
 
 interface ReverseConvertibleReportProps {
   reportData: ReverseConvertibleReportData;
@@ -45,6 +46,10 @@ export function ReverseConvertibleReport({ reportData }: ReverseConvertibleRepor
   // AI Content Generation
   const { content: aiContent, isGenerating: isGeneratingAI, isReady: aiReady } = useAIContentGeneration(reportData);
   const [previewModal, setPreviewModal] = useState<{ isOpen: boolean; format: ExportFormat; content: string } | null>(null);
+  
+  // Investment Tracker
+  const { saveToTracker, saving: savingToTracker } = useInvestmentTracker();
+  const [savedToTracker, setSavedToTracker] = useState(false);
 
   // Calculate current worst-of level (or single level)
   const currentLevel = reportData.worstOfLevel || 
@@ -93,11 +98,34 @@ export function ReverseConvertibleReport({ reportData }: ReverseConvertibleRepor
     downloadAsDocument(previewModal.content, previewModal.format, productName);
   };
 
+  const handleSaveToTracker = async () => {
+    const success = await saveToTracker(reportData);
+    if (success) {
+      setSavedToTracker(true);
+      setTimeout(() => setSavedToTracker(false), 3000); // Reset after 3 seconds
+    }
+  };
+
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-grad)' }}>
       <div id="report-container" className="report-root max-w-7xl mx-auto px-6 py-8">
         {/* Action Buttons */}
         <div className="flex justify-end gap-3 mb-6 no-print">
+          <button
+            onClick={handleSaveToTracker}
+            disabled={savingToTracker || savedToTracker}
+            className={`flex items-center space-x-2 px-6 py-3 text-base font-semibold rounded-lg transition-all ${
+              savedToTracker
+                ? 'bg-green-positive text-white'
+                : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700'
+            }`}
+            style={{
+              boxShadow: 'var(--shadow-button)',
+            }}
+          >
+            <Save className="w-5 h-5" />
+            <span>{savedToTracker ? '✓ Saved!' : savingToTracker ? 'Saving...' : 'Save to Tracker'}</span>
+          </button>
           <ExportDropdown
             content={aiContent}
             isGenerating={isGeneratingAI}

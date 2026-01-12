@@ -10,7 +10,7 @@ import type { ISODateString } from '../../core/types/dates';
 import { round, safeDivide } from '../../core/utils/math';
 import { generateCouponSchedule, calculateCouponCount } from '../common/schedule';
 import { getCurrentISODate, addMonths } from '../../core/types/dates';
-import { calcLevels, worstOf } from '../common/basket';
+import { calcLevels, worstOf, averageOf } from '../common/basket';
 
 /**
  * Market data input for payoff calculation
@@ -23,7 +23,7 @@ export interface ReverseConvertibleMarketData {
 
 /**
  * Calculate standard barrier Reverse Convertible payoff
- * Uses worst-of level for basket products
+ * Supports worst-of and equally weighted baskets
  */
 export function calculateStandardBarrierRC(
   terms: ReverseConvertibleTerms,
@@ -43,8 +43,23 @@ export function calculateStandardBarrierRC(
   // Calculate normalized levels for each underlying
   const levels = calcLevels(market.spotPrices, market.initialFixings);
   
-  // Get worst-of level and index
-  const { worstLevel, worstIndex } = worstOf(levels);
+  // Determine basket level based on basket type
+  let basketLevel: number;
+  let referenceIndex: number;
+  
+  if (terms.basketType === 'equally_weighted') {
+    // Equally weighted: use average of all levels
+    basketLevel = averageOf(levels);
+    referenceIndex = 0; // Use first underlying as reference for share conversion
+  } else {
+    // worst_of or single: use worst performer
+    const { worstLevel, worstIndex } = worstOf(levels);
+    basketLevel = worstLevel;
+    referenceIndex = worstIndex;
+  }
+  
+  const worstLevel = basketLevel; // Keep for backward compatibility
+  const worstIndex = referenceIndex;
   const worstUnderlying = terms.underlyings[worstIndex];
   const worstInitialFixing = market.initialFixings[worstIndex];
   const worstSpotPrice = market.spotPrices[worstIndex];
@@ -85,7 +100,7 @@ export function calculateStandardBarrierRC(
 
 /**
  * Calculate low strike / geared put Reverse Convertible payoff
- * Uses worst-of level for basket products
+ * Supports worst-of and equally weighted baskets
  */
 export function calculateLowStrikeGearedPut(
   terms: ReverseConvertibleTerms,
@@ -107,8 +122,23 @@ export function calculateLowStrikeGearedPut(
   // Calculate normalized levels for each underlying
   const levels = calcLevels(market.spotPrices, market.initialFixings);
   
-  // Get worst-of level and index
-  const { worstLevel, worstIndex } = worstOf(levels);
+  // Determine basket level based on basket type
+  let basketLevel: number;
+  let referenceIndex: number;
+  
+  if (terms.basketType === 'equally_weighted') {
+    // Equally weighted: use average of all levels
+    basketLevel = averageOf(levels);
+    referenceIndex = 0; // Use first underlying as reference for share conversion
+  } else {
+    // worst_of or single: use worst performer
+    const { worstLevel, worstIndex } = worstOf(levels);
+    basketLevel = worstLevel;
+    referenceIndex = worstIndex;
+  }
+  
+  const worstLevel = basketLevel; // Keep for backward compatibility
+  const worstIndex = referenceIndex;
   const worstUnderlying = terms.underlyings[worstIndex];
   const worstInitialFixing = market.initialFixings[worstIndex];
   const worstSpotPrice = market.spotPrices[worstIndex];

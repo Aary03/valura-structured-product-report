@@ -9,6 +9,7 @@ import { ReverseConvertibleReport } from './components/report/ReverseConvertible
 import { CapitalProtectedParticipationReport } from './components/report/CapitalProtectedParticipationReport';
 import { NewsPage } from './components/pages/NewsPage';
 import { AIReportBuilder } from './pages/AIReportBuilder';
+import { PositionTrackerPage } from './pages/PositionTrackerPage';
 import { useReportGenerator } from './hooks/useReportGenerator';
 import type { ProductTerms } from './hooks/useReportGenerator';
 import { APITestComponent } from './test-api-component';
@@ -21,7 +22,7 @@ import './styles/theme.css';
 const TEST_API_MODE = false;
 const TEST_NEWS_API_MODE = false; // Set to false for normal app, true to test Marketaux API
 
-type RouteType = 'home' | 'breakfast' | 'ai-builder';
+type RouteType = 'home' | 'breakfast' | 'ai-builder' | 'tracker';
 
 function App() {
   const isPdf = new URLSearchParams(window.location.search).get('pdf') === '1';
@@ -39,6 +40,8 @@ function App() {
         setCurrentRoute('breakfast');
       } else if (hash === 'ai-builder') {
         setCurrentRoute('ai-builder');
+      } else if (hash === 'tracker') {
+        setCurrentRoute('tracker');
       } else {
         setCurrentRoute('home');
       }
@@ -72,6 +75,11 @@ function App() {
   // Route to AI Report Builder
   if (currentRoute === 'ai-builder') {
     return <AIReportBuilder />;
+  }
+
+  // Route to Position Tracker
+  if (currentRoute === 'tracker') {
+    return <PositionTrackerPage />;
   }
 
   const handleFormSubmit = async (terms: ProductTerms) => {
@@ -114,6 +122,22 @@ function App() {
                   </a>
                   
                   <a
+                    href="#tracker"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-colors shadow-md"
+                  >
+                    <span>📊</span>
+                    <span className="font-medium">Track Investments</span>
+                  </a>
+                  
+                  <a
+                    href="#tracker"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg hover:from-emerald-600 hover:to-teal-700 transition-all shadow-md hover:shadow-lg transform hover:scale-105"
+                  >
+                    <span>📊</span>
+                    <span className="font-medium">Position Tracker</span>
+                  </a>
+                  
+                  <a
                     href="#breakfast"
                     className="flex items-center gap-2 px-5 py-2.5 bg-valura-ink text-white rounded-lg hover:bg-valura-ink/90 transition-colors shadow-md"
                   >
@@ -145,13 +169,22 @@ function App() {
                 >
                   ← Back to Input
                 </button>
-                <a
-                  href="#breakfast"
-                  className="flex items-center gap-2 px-4 py-2 bg-valura-ink text-white rounded-lg hover:bg-valura-ink/90 transition-colors text-sm no-print"
-                >
-                  <span>☕</span>
-                  <span className="font-medium">Valura Breakfast</span>
-                </a>
+                <div className="flex items-center gap-2">
+                  <a
+                    href="#tracker"
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg hover:from-emerald-600 hover:to-teal-700 transition-all text-sm no-print shadow-md"
+                  >
+                    <span>📊</span>
+                    <span className="font-medium">Tracker</span>
+                  </a>
+                  <a
+                    href="#breakfast"
+                    className="flex items-center gap-2 px-4 py-2 bg-valura-ink text-white rounded-lg hover:bg-valura-ink/90 transition-colors text-sm no-print"
+                  >
+                    <span>☕</span>
+                    <span className="font-medium">Valura Breakfast</span>
+                  </a>
+                </div>
               </div>
             </div>
           </div>

@@ -49,7 +49,13 @@ export function BreakEvenCard({ terms, notional = 100000 }: BreakEvenCardProps) 
     <CardShell className="p-6">
       <SectionHeader
         title="Break-Even Analysis"
-        subtitle="The worst stock final level where total return equals zero"
+        subtitle={
+          terms.basketType === 'equally_weighted' 
+            ? 'The average basket level where total return equals zero'
+            : terms.basketType === 'worst_of'
+            ? 'The worst stock final level where total return equals zero'
+            : 'The stock final level where total return equals zero'
+        }
       />
       
       <div className="mt-6 space-y-4">
@@ -79,7 +85,9 @@ export function BreakEvenCard({ terms, notional = 100000 }: BreakEvenCardProps) 
             <div className="flex-1">
               <div className="text-sm font-semibold text-valura-ink mb-1">Above Break-Even</div>
               <div className="text-xs text-muted">
-                If the worst stock final level is above {formatPercent(breakEvenPct / 100, 1)}, 
+                If the {terms.basketType === 'equally_weighted' ? 'average basket level' : 
+                  terms.basketType === 'worst_of' ? 'worst stock final level' : 
+                  'stock final level'} is above {formatPercent(breakEvenPct / 100, 1)}, 
                 you will have a positive total return (ending value + coupons {'>'} initial investment).
               </div>
             </div>
@@ -90,7 +98,9 @@ export function BreakEvenCard({ terms, notional = 100000 }: BreakEvenCardProps) 
             <div className="flex-1">
               <div className="text-sm font-semibold text-valura-ink mb-1">Below Break-Even</div>
               <div className="text-xs text-muted">
-                If the worst stock final level is below {formatPercent(breakEvenPct / 100, 1)}, 
+                If the {terms.basketType === 'equally_weighted' ? 'average basket level' : 
+                  terms.basketType === 'worst_of' ? 'worst stock final level' : 
+                  'stock final level'} is below {formatPercent(breakEvenPct / 100, 1)}, 
                 you will have a negative total return (ending value + coupons {'<'} initial investment).
               </div>
             </div>

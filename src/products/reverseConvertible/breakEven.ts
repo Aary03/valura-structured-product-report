@@ -1,6 +1,7 @@
 /**
  * Break-Even Calculation Utilities
  * Calculate break-even levels for Reverse Convertible products
+ * Supports worst-of and equally weighted baskets
  */
 
 import type { ReverseConvertibleTerms } from './terms';
@@ -18,7 +19,7 @@ export function calculateTotalCouponsPct(
 }
 
 /**
- * Calculate break-even worst-of final level (as percentage)
+ * Calculate break-even basket level (as percentage)
  * 
  * Break-even is the level L where EndingValue = N (total return = 0%)
  * 
@@ -38,8 +39,10 @@ export function calculateTotalCouponsPct(
  *   - L_BE = K * (1 - c)
  *   - Example: K = 0.55, c = 0.10 → L_BE = 49.5%
  * 
- * Note: For standard RC, if break-even is above the barrier, it's outside the
- * conversion zone (any conversion will be below break-even).
+ * Note: 
+ * - For worst-of baskets: L_BE is the worst performer level needed
+ * - For equally weighted baskets: L_BE is the average level needed
+ * - If break-even is above the barrier, any conversion results in loss
  */
 export function calculateBreakEvenPct(
   terms: ReverseConvertibleTerms
@@ -62,6 +65,19 @@ export function calculateBreakEvenPct(
   
   // Return as percentage
   return L_BE * 100;
+}
+
+/**
+ * Get break-even description based on basket type
+ */
+export function getBreakEvenDescription(terms: ReverseConvertibleTerms): string {
+  if (terms.basketType === 'equally_weighted') {
+    return 'Average of all underlyings needs to be at this level or above';
+  } else if (terms.basketType === 'worst_of') {
+    return 'Worst performing underlying needs to be at this level or above';
+  } else {
+    return 'Underlying needs to be at this level or above';
+  }
 }
 
 /**

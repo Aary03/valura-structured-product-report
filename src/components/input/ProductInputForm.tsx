@@ -49,6 +49,9 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
     autocallEnabled: false,
     autocallLevelPct: '100', // Percentage
     autocallFrequency: '', // Default: same as coupon frequency
+    autocallStepDown: false, // Step-down autocall feature
+    stepDownStart: '100', // Starting level (%)
+    stepDownStep: '5', // Step size (%)
   });
 
   type CppnFormState = {
@@ -147,8 +150,8 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
     }
   };
 
-  const handleBasketTypeChangeRC = (type: 'single' | 'worst_of') => {
-    setBasketTypeRC(type);
+  const handleBasketTypeChangeRC = (type: 'single' | 'worst_of' | 'equally_weighted') => {
+    setBasketTypeRC(type as 'single' | 'worst_of');
     ensureUnderlyingCountForBasket(type);
   };
 
@@ -253,7 +256,33 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
       // Add autocall terms if enabled
       if (rcFormData.autocallEnabled) {
         terms.autocallEnabled = true;
-        terms.autocallLevelPct = parseFloat(rcFormData.autocallLevelPct) / 100;
+        
+        if (rcFormData.autocallStepDown) {
+          // Step-down autocall
+          terms.autocallStepDown = true;
+          const startLevel = parseFloat(rcFormData.stepDownStart) / 100;
+          const stepSize = parseFloat(rcFormData.stepDownStep) / 100;
+          const frequency = rcFormData.autocallFrequency 
+            ? frequencyFromString(rcFormData.autocallFrequency)
+            : terms.couponFreqPerYear;
+          
+          // Calculate number of observations
+          const monthsPerObs = 12 / frequency;
+          const numObservations = Math.floor(parseInt(rcFormData.tenorMonths) / monthsPerObs);
+          
+          // Generate step-down levels
+          const levels: number[] = [];
+          for (let i = 0; i < numObservations; i++) {
+            const level = startLevel - (i * stepSize);
+            levels.push(Math.max(0.5, level)); // Don't go below 50%
+          }
+          terms.autocallStepDownLevels = levels;
+        } else {
+          // Fixed autocall
+          terms.autocallStepDown = false;
+          terms.autocallLevelPct = parseFloat(rcFormData.autocallLevelPct) / 100;
+        }
+        
         terms.autocallFrequency = rcFormData.autocallFrequency 
           ? frequencyFromString(rcFormData.autocallFrequency)
           : terms.couponFreqPerYear; // Default to coupon frequency
@@ -448,7 +477,7 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
             <h3 className="text-xl font-semibold mb-4 text-valura-ink">Underlying Selection</h3>
             <div className="space-y-4 mb-6">
               {productType === 'RC' ? (
-                <div className="flex space-x-4">
+                <div className="flex flex-wrap gap-4">
                   <label className="flex items-center space-x-3 cursor-pointer">
                     <input
                       type="radio"
@@ -470,6 +499,17 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
                       className="w-5 h-5 text-valura-ink"
                     />
                     <span className="text-valura-ink">Worst-Of Basket (2-3)</span>
+                  </label>
+                  <label className="flex items-center space-x-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="basketType"
+                      value="equally_weighted"
+                      checked={basketTypeRC === 'equally_weighted'}
+                      onChange={() => handleBasketTypeChangeRC('equally_weighted' as any)}
+                      className="w-5 h-5 text-valura-ink"
+                    />
+                    <span className="text-valura-ink">Equally Weighted (2-3)</span>
                   </label>
                 </div>
               ) : (
@@ -627,41 +667,96 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
                 </div>
 
                 {rcFormData.autocallEnabled && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="label">Autocall Level (%)</label>
-                      <input
-                        type="number"
-                        className="input-field"
-                        value={rcFormData.autocallLevelPct}
-                        onChange={(e) => handleRcChange('autocallLevelPct', e.target.value)}
-                        placeholder="100"
-                        min="0"
-                        max="200"
-                        step="1"
-                      />
-                      <p className="text-text-secondary text-xs mt-1">
-                        Level at which the product autocalls (typically 100%)
-                      </p>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="label">Autocall Frequency</label>
+                        <select
+                          className="input-field"
+                          value={rcFormData.autocallFrequency}
+                          onChange={(e) => handleRcChange('autocallFrequency', e.target.value)}
+                        >
+                          <option value="">Same as Coupon Frequency</option>
+                          <option value="monthly">Monthly</option>
+                          <option value="quarterly">Quarterly</option>
+                          <option value="semi-annual">Semi-Annual</option>
+                          <option value="annual">Annual</option>
+                        </select>
+                        <p className="text-text-secondary text-xs mt-1">
+                          How often autocall is observed
+                        </p>
+                      </div>
+                      
+                      <div>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={rcFormData.autocallStepDown}
+                            onChange={(e) => handleRcChange('autocallStepDown', String(e.target.checked))}
+                            className="w-4 h-4"
+                          />
+                          <span className="text-sm font-medium">Enable Step-Down</span>
+                        </label>
+                        <p className="text-text-secondary text-xs mt-1">
+                          Autocall level decreases at each observation (e.g., 100%, 95%, 90%)
+                        </p>
+                      </div>
                     </div>
 
-                    <div>
-                      <label className="label">Autocall Frequency</label>
-                      <select
-                        className="input-field"
-                        value={rcFormData.autocallFrequency}
-                        onChange={(e) => handleRcChange('autocallFrequency', e.target.value)}
-                      >
-                        <option value="">Same as Coupon Frequency</option>
-                        <option value="monthly">Monthly</option>
-                        <option value="quarterly">Quarterly</option>
-                        <option value="semi-annual">Semi-Annual</option>
-                        <option value="annual">Annual</option>
-                      </select>
-                      <p className="text-text-secondary text-xs mt-1">
-                        How often autocall is observed (defaults to coupon frequency)
-                      </p>
-                    </div>
+                    {rcFormData.autocallStepDown ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="label">Starting Level (%)</label>
+                          <input
+                            type="number"
+                            className="input-field"
+                            value={rcFormData.stepDownStart}
+                            onChange={(e) => handleRcChange('stepDownStart', e.target.value)}
+                            placeholder="100"
+                            min="50"
+                            max="150"
+                            step="1"
+                          />
+                          <p className="text-text-secondary text-xs mt-1">
+                            First observation level (typically 100%)
+                          </p>
+                        </div>
+
+                        <div>
+                          <label className="label">Step Size (%)</label>
+                          <input
+                            type="number"
+                            className="input-field"
+                            value={rcFormData.stepDownStep}
+                            onChange={(e) => handleRcChange('stepDownStep', e.target.value)}
+                            placeholder="5"
+                            min="1"
+                            max="20"
+                            step="1"
+                          />
+                          <p className="text-text-secondary text-xs mt-1">
+                            Decrease per observation (e.g., 5% → 100%, 95%, 90%, 85%)
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="label">Autocall Level (%)</label>
+                        <input
+                          type="number"
+                          className="input-field"
+                          value={rcFormData.autocallLevelPct}
+                          onChange={(e) => handleRcChange('autocallLevelPct', e.target.value)}
+                          placeholder="100"
+                          min="0"
+                          max="200"
+                          step="1"
+                        />
+                        <p className="text-text-secondary text-xs mt-1">
+                          Fixed level at which the product autocalls (typically 100%)
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

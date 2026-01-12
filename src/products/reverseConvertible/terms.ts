@@ -29,7 +29,7 @@ export interface ReverseConvertibleTerms {
   // Basic terms
   notional: number;
   currency: Currency;
-  basketType: 'single' | 'worst_of';
+  basketType: 'single' | 'worst_of' | 'equally_weighted';
   underlyings: Underlying[]; // Array of 1-3 underlyings
   initialFixings: number[]; // Initial fixing per underlying (same order as underlyings)
   tenorMonths: number;
@@ -59,8 +59,12 @@ export interface ReverseConvertibleTerms {
   
   // Autocall terms (optional)
   autocallEnabled?: boolean; // Whether autocall feature is enabled
-  autocallLevelPct?: number; // Autocall trigger level (e.g., 1.00 = 100%)
+  autocallLevelPct?: number; // Autocall trigger level for fixed autocall (e.g., 1.00 = 100%)
   autocallFrequency?: CouponFrequency; // How often autocall is observed (default: same as coupon frequency)
+  
+  // Autocall Step-Down (optional)
+  autocallStepDown?: boolean; // Whether step-down autocall is enabled
+  autocallStepDownLevels?: number[]; // Array of descending autocall levels (e.g., [1.00, 0.95, 0.90, 0.85])
 }
 
 /**
@@ -104,9 +108,9 @@ export function validateReverseConvertibleTerms(
     errors.push('Single basket type requires exactly 1 underlying');
   }
   
-  if (terms.basketType === 'worst_of') {
+  if (terms.basketType === 'worst_of' || terms.basketType === 'equally_weighted') {
     if (terms.underlyings.length < 2 || terms.underlyings.length > 3) {
-      errors.push('Worst-of basket requires 2 or 3 underlyings');
+      errors.push('Basket requires 2 or 3 underlyings');
     }
     
     // Check for duplicate symbols
@@ -114,6 +118,19 @@ export function validateReverseConvertibleTerms(
     const uniqueSymbols = new Set(symbols);
     if (uniqueSymbols.size !== symbols.length) {
       errors.push('Underlying symbols must be unique');
+    }
+  }
+  
+  // Autocall step-down validation
+  if (terms.autocallStepDown && terms.autocallStepDownLevels) {
+    if (terms.autocallStepDownLevels.length === 0) {
+      errors.push('Autocall step-down levels array cannot be empty');
+    }
+    // Verify descending order
+    for (let i = 1; i < terms.autocallStepDownLevels.length; i++) {
+      if (terms.autocallStepDownLevels[i] >= terms.autocallStepDownLevels[i - 1]) {
+        errors.push('Autocall step-down levels must be in descending order');
+      }
     }
   }
   
