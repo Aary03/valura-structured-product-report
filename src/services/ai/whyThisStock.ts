@@ -70,6 +70,7 @@ export interface WhyThisStockResponse {
     sentiment: 'positive' | 'neutral' | 'negative';
     source: string;
     date: string;
+    url: string; // External link to news article
   }>;
   bottomLine: string; // 2-3 sentence conclusion
 }
@@ -243,7 +244,8 @@ FORMAT (respond with ONLY valid JSON, no markdown):
       "summary": "Brief summary of the news and its investment impact",
       "sentiment": "positive" | "neutral" | "negative",
       "source": "Realistic source (Bloomberg, Reuters, CNBC, WSJ, etc.)",
-      "date": "Recent date (e.g., 'Jan 11, 2026')"
+      "date": "Recent date from Jan 2026 ONLY (e.g., 'Jan 11, 2026', 'Jan 10, 2026')",
+      "url": "Realistic URL format matching the source domain (e.g., https://www.bloomberg.com/news/articles/2026-01-11/..., https://www.reuters.com/markets/...)"
     }
   ],
   "bottomLine": "2-3 sentence conclusion summarizing why this stock makes sense for this product"
@@ -251,7 +253,9 @@ FORMAT (respond with ONLY valid JSON, no markdown):
 
 IMPORTANT:
 - Include 2-3 recent news items that are investment-relevant
+- **ALL NEWS DATES MUST BE FROM JANUARY 2026 (current month)** - use dates like Jan 11, 2026 or Jan 10, 2026
 - News should be realistic and contextual to the company/sector
+- Include realistic external URLs that match the source domain (e.g., bloomberg.com, reuters.com, wsj.com, cnbc.com)
 - Focus on material developments (earnings, products, analyst actions, regulatory)
 - Keep all points concise and actionable`;
 

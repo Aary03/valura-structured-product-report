@@ -48,7 +48,7 @@ ${response.riskReward.keyRisks.map(r => `• ${r}`).join('\n')}
 
 ${response.recentNews && response.recentNews.length > 0 ? `
 RECENT NEWS
-${response.recentNews.map(n => `• ${n.headline} (${n.source}, ${n.date})`).join('\n')}
+${response.recentNews.map(n => `• ${n.headline} (${n.source}, ${n.date})${n.url ? `\n  ${n.url}` : ''}`).join('\n')}
 ` : ''}
 
 BOTTOM LINE
@@ -215,6 +215,17 @@ ${response.bottomLine}
                         <span className="text-xs text-text-tertiary">•</span>
                         <span className="text-xs text-text-tertiary">{news.date}</span>
                       </div>
+                      {news.url && (
+                        <a
+                          href={news.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 transition-colors flex-shrink-0"
+                          title="Read full article"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      )}
                     </div>
                     <h5 className="text-sm font-bold text-text-primary mb-1 leading-snug">
                       {news.headline}
