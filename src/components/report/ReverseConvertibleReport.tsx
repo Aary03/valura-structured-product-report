@@ -32,7 +32,7 @@ import { ExportPreviewModal } from '../export/ExportPreviewModal';
 import type { ExportFormat } from '../export/ExportDropdown';
 import { useAIContentGeneration } from '../../hooks/useAIContentGeneration';
 import { downloadAsDocument } from '../../utils/exportContent';
-import { useInvestmentTracker } from '../../hooks/useInvestmentTracker';
+import { SavePositionModal } from '../tracker/SavePositionModal';
 
 interface ReverseConvertibleReportProps {
   reportData: ReverseConvertibleReportData;
@@ -47,8 +47,8 @@ export function ReverseConvertibleReport({ reportData }: ReverseConvertibleRepor
   const { content: aiContent, isGenerating: isGeneratingAI, isReady: aiReady } = useAIContentGeneration(reportData);
   const [previewModal, setPreviewModal] = useState<{ isOpen: boolean; format: ExportFormat; content: string } | null>(null);
   
-  // Investment Tracker
-  const { saveToTracker, saving: savingToTracker } = useInvestmentTracker();
+  // Investment Tracker - use modal for proper initial price selection
+  const [showSaveModal, setShowSaveModal] = useState(false);
   const [savedToTracker, setSavedToTracker] = useState(false);
 
   // Calculate current worst-of level (or single level)
@@ -98,12 +98,13 @@ export function ReverseConvertibleReport({ reportData }: ReverseConvertibleRepor
     downloadAsDocument(previewModal.content, previewModal.format, productName);
   };
 
-  const handleSaveToTracker = async () => {
-    const success = await saveToTracker(reportData);
-    if (success) {
-      setSavedToTracker(true);
-      setTimeout(() => setSavedToTracker(false), 3000); // Reset after 3 seconds
-    }
+  const handleSaveToTracker = () => {
+    setShowSaveModal(true);
+  };
+
+  const handleSaved = () => {
+    setSavedToTracker(true);
+    setTimeout(() => setSavedToTracker(false), 3000);
   };
 
   return (
@@ -113,7 +114,7 @@ export function ReverseConvertibleReport({ reportData }: ReverseConvertibleRepor
         <div className="flex justify-end gap-3 mb-6 no-print">
           <button
             onClick={handleSaveToTracker}
-            disabled={savingToTracker || savedToTracker}
+            disabled={savedToTracker}
             className={`flex items-center space-x-2 px-6 py-3 text-base font-semibold rounded-lg transition-all ${
               savedToTracker
                 ? 'bg-green-positive text-white'
@@ -124,8 +125,17 @@ export function ReverseConvertibleReport({ reportData }: ReverseConvertibleRepor
             }}
           >
             <Save className="w-5 h-5" />
-            <span>{savedToTracker ? '✓ Saved!' : savingToTracker ? 'Saving...' : 'Save to Tracker'}</span>
+            <span>{savedToTracker ? '✓ Saved!' : 'Save to Tracker'}</span>
           </button>
+          
+          {/* Save Position Modal */}
+          {showSaveModal && (
+            <SavePositionModal
+              reportData={reportData}
+              onClose={() => setShowSaveModal(false)}
+              onSaved={handleSaved}
+            />
+          )}
           <ExportDropdown
             content={aiContent}
             isGenerating={isGeneratingAI}

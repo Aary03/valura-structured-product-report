@@ -222,8 +222,9 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
       name: u.name || undefined,
     }));
 
-    // Get initial fixings (will be set from API data, use current prices as placeholder)
-    const initialFixings = underlyingsArray.map(() => 100); // Placeholder, will be replaced by API data
+    // Get initial fixings - will be replaced with actual market data in useReportGenerator
+    // Using 100 as placeholder here, but actual current prices will be fetched and used
+    const initialFixings = underlyingsArray.map(() => 100); // Temporary placeholder
 
     if (productType === 'RC') {
       const terms: ReverseConvertibleTerms = {

@@ -589,6 +589,51 @@ function PositionCard({
           currentPrices={marketData.underlyingPrices}
           currency={currency}
         />
+
+        {/* Current Prices Display - Shows actual market prices */}
+        <div className="section-card bg-gradient-to-br from-blue-50 to-cyan-50">
+          <h3 className="text-lg font-bold text-blue-700 mb-4">📊 Live Market Prices</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {terms.underlyings.map((underlying, idx) => (
+              <div key={idx} className="bg-white rounded-xl p-4 border-2 border-blue-200">
+                <div className="text-lg font-bold text-valura-ink mb-2">{underlying.ticker}</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <div className="text-xs text-muted">Initial</div>
+                    <div className="text-2xl font-bold text-blue-600">
+                      {new Intl.NumberFormat('en-US', { 
+                        style: 'currency', 
+                        currency 
+                      }).format(position.initialFixings[idx])}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted">Current (Live)</div>
+                    <div className="text-2xl font-bold text-valura-ink">
+                      {new Intl.NumberFormat('en-US', { 
+                        style: 'currency', 
+                        currency 
+                      }).format(marketData.underlyingPrices[idx])}
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-2 text-sm text-center">
+                  <span className={`font-bold ${
+                    marketData.underlyingPrices[idx] >= position.initialFixings[idx] 
+                      ? 'text-green-600' 
+                      : 'text-red-600'
+                  }`}>
+                    {((marketData.underlyingPrices[idx] / position.initialFixings[idx] - 1) * 100).toFixed(2)}%
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 text-xs text-blue-700">
+            <strong>Data freshness:</strong> Prices updated {marketData.timestamp.toLocaleTimeString()}. 
+            Click "Refresh Prices" to get latest.
+          </div>
+        </div>
       </div>
     </div>
   );

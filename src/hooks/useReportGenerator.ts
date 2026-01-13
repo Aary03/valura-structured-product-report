@@ -91,8 +91,9 @@ export function useReportGenerator(): UseReportGeneratorResult {
 
   // Get arrays of prices for basket support
   const spotPrices: number[] = underlyingData.map(d => d.currentPrice);
+  // Use actual current prices as initial fixings (these become the "initial" price for the report)
   const initialFixings: number[] = underlyingData.map((d, i) => 
-    d.initialFixing ?? d.currentPrice ?? (currentTerms?.initialFixings?.[i] || 100)
+    d.initialFixing ?? d.currentPrice ?? (currentTerms?.initialFixings?.[i] || d.currentPrice || 100)
   );
 
   // Calculate payoff (supports basket)

@@ -7,7 +7,7 @@ import { useMemo, useState } from 'react';
 import type { CapitalProtectedParticipationReportData } from '../../hooks/useReportGenerator';
 import { Download, Save } from 'lucide-react';
 import { downloadReportPDFServer } from '../../utils/pdfExport';
-import { useInvestmentTracker } from '../../hooks/useInvestmentTracker';
+import { SavePositionModal } from '../tracker/SavePositionModal';
 import { normalizeLevel } from '../../products/common/basket';
 import { addMonths, getCurrentISODate } from '../../core/types/dates';
 import { CppnHeroHeader } from './CppnHeroHeader';
@@ -47,8 +47,8 @@ export function CapitalProtectedParticipationReport({ reportData }: CapitalProte
   const { content: aiContent, isGenerating: isGeneratingAI, isReady: aiReady } = useAIContentGeneration(reportData);
   const [previewModal, setPreviewModal] = useState<{ isOpen: boolean; format: ExportFormat; content: string } | null>(null);
   
-  // Investment Tracker
-  const { saveToTracker, saving: savingToTracker } = useInvestmentTracker();
+  // Investment Tracker - use modal for proper initial price selection
+  const [showSaveModal, setShowSaveModal] = useState(false);
   const [savedToTracker, setSavedToTracker] = useState(false);
 
   const currentLevelPct = useMemo(() => {
@@ -97,12 +97,13 @@ export function CapitalProtectedParticipationReport({ reportData }: CapitalProte
     downloadAsDocument(previewModal.content, previewModal.format, productName);
   };
 
-  const handleSaveToTracker = async () => {
-    const success = await saveToTracker(reportData);
-    if (success) {
-      setSavedToTracker(true);
-      setTimeout(() => setSavedToTracker(false), 3000);
-    }
+  const handleSaveToTracker = () => {
+    setShowSaveModal(true);
+  };
+
+  const handleSaved = () => {
+    setSavedToTracker(true);
+    setTimeout(() => setSavedToTracker(false), 3000);
   };
 
   return (
@@ -111,7 +112,7 @@ export function CapitalProtectedParticipationReport({ reportData }: CapitalProte
         <div className="flex justify-end gap-3 mb-6 no-print">
           <button
             onClick={handleSaveToTracker}
-            disabled={savingToTracker || savedToTracker}
+            disabled={savedToTracker}
             className={`flex items-center space-x-2 px-6 py-3 text-base font-semibold rounded-lg transition-all ${
               savedToTracker
                 ? 'bg-green-positive text-white'
@@ -122,8 +123,17 @@ export function CapitalProtectedParticipationReport({ reportData }: CapitalProte
             }}
           >
             <Save className="w-5 h-5" />
-            <span>{savedToTracker ? '✓ Saved!' : savingToTracker ? 'Saving...' : 'Save to Tracker'}</span>
+            <span>{savedToTracker ? '✓ Saved!' : 'Save to Tracker'}</span>
           </button>
+          
+          {/* Save Position Modal */}
+          {showSaveModal && (
+            <SavePositionModal
+              reportData={reportData}
+              onClose={() => setShowSaveModal(false)}
+              onSaved={handleSaved}
+            />
+          )}
           <ExportDropdown
             content={aiContent}
             isGenerating={isGeneratingAI}
