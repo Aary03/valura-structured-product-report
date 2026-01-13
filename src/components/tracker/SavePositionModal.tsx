@@ -3,8 +3,8 @@
  * Enhanced modal for saving positions with proper initial price selection
  */
 
-import { useState } from 'react';
-import { X, Save, Calendar } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Save, Calendar, Info } from 'lucide-react';
 import type { ReverseConvertibleReportData, CapitalProtectedParticipationReportData } from '../../hooks/useReportGenerator';
 import { InitialPriceSelector } from './InitialPriceSelector';
 import { saveInvestmentPosition } from '../../services/investmentStorage';
@@ -19,11 +19,20 @@ interface SavePositionModalProps {
 }
 
 export function SavePositionModal({ reportData, onClose, onSaved }: SavePositionModalProps) {
-  const { terms } = reportData;
+  const { terms, underlyingData } = reportData;
   const [positionName, setPositionName] = useState('');
   const [selectedPrices, setSelectedPrices] = useState<Record<string, number>>({});
   const [tradeDates, setTradeDates] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+
+  // Initialize with current prices from report as default
+  useEffect(() => {
+    const initialPrices: Record<string, number> = {};
+    underlyingData.forEach((data) => {
+      initialPrices[data.symbol] = data.initialFixing || data.currentPrice;
+    });
+    setSelectedPrices(initialPrices);
+  }, [underlyingData]);
 
   const handlePriceSelected = (symbol: string, price: number, date: string) => {
     setSelectedPrices(prev => ({ ...prev, [symbol]: price }));
@@ -42,9 +51,15 @@ export function SavePositionModal({ reportData, onClose, onSaved }: SavePosition
       const maturityDate = addMonths(inceptionDate, terms.tenorMonths);
 
       // Build initial fixings array from selected prices
-      const initialFixings = terms.underlyings.map(u => 
-        selectedPrices[u.ticker] || 100 // Fallback to 100 if not set
-      );
+      const initialFixings = terms.underlyings.map(u => {
+        const selected = selectedPrices[u.ticker];
+        if (selected && selected > 0) {
+          return selected;
+        }
+        // Fallback to report data
+        const reportPrice = underlyingData.find(d => d.symbol === u.ticker);
+        return reportPrice?.initialFixing || reportPrice?.currentPrice || 100;
+      });
 
       // Generate coupon schedule if RC product
       const couponHistory = terms.productType === 'RC'
@@ -141,14 +156,30 @@ export function SavePositionModal({ reportData, onClose, onSaved }: SavePosition
             </p>
 
             <div className="space-y-4">
-              {terms.underlyings.map((underlying) => (
-                <InitialPriceSelector
-                  key={underlying.ticker}
-                  symbol={underlying.ticker}
-                  onPriceSelected={(price, date) => handlePriceSelected(underlying.ticker, price, date)}
-                  defaultPrice={100}
-                />
-              ))}
+              {terms.underlyings.map((underlying) => {
+                const reportData = underlyingData.find(d => d.symbol === underlying.ticker);
+                const defaultPrice = reportData?.currentPrice || 100;
+                
+                return (
+                  <InitialPriceSelector
+                    key={underlying.ticker}
+                    symbol={underlying.ticker}
+                    onPriceSelected={(price, date) => handlePriceSelected(underlying.ticker, price, date)}
+                    defaultPrice={defaultPrice}
+                  />
+                );
+              })}
+            </div>
+            
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="flex items-start gap-2">
+                <Info className="w-4 h-4 text-blue-600 mt-0.5" />
+                <div className="text-xs text-blue-900">
+                  <strong>Tip:</strong> Choose your actual trade date for accurate performance tracking. 
+                  The system will calculate P&L from your selected reference price. If historical data 
+                  doesn't load, you can use Manual Entry.
+                </div>
+              </div>
             </div>
           </div>
 

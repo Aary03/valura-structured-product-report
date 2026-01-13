@@ -42,7 +42,7 @@ export function InitialPriceSelector({
   const loadHistoricalPrices = async () => {
     setLoading(true);
     try {
-      // Get 3 months of daily prices
+      // Get 3 months of daily prices using FMP API
       const endDate = new Date();
       const startDate = new Date();
       startDate.setMonth(startDate.getMonth() - 3);
@@ -50,8 +50,11 @@ export function InitialPriceSelector({
       const from = startDate.toISOString().split('T')[0];
       const to = endDate.toISOString().split('T')[0];
 
-      const url = fmpClient.historicalPrice.dailyPrices(symbol, from, to);
+      // Use FMP historical price endpoint
+      const url = `https://financialmodelingprep.com/api/v3/historical-price-full/${symbol}?from=${from}&to=${to}`;
       const data = await fmpClient.get<{ historical: HistoricalPrice[] }>(url);
+
+      console.log('Historical data loaded for', symbol, data);
 
       if (data.historical && data.historical.length > 0) {
         // Sort by date (most recent first)
@@ -65,9 +68,20 @@ export function InitialPriceSelector({
         setSelectedDate(recent.date);
         setSelectedPrice(recent.close);
         onPriceSelected(recent.close, recent.date);
+      } else {
+        // Fallback: use current report data as reference
+        console.warn('No historical data, using default');
+        const today = new Date().toISOString().split('T')[0];
+        setSelectedDate(today);
+        onPriceSelected(defaultPrice, today);
       }
     } catch (error) {
       console.error('Failed to load historical prices:', error);
+      // Fallback to default
+      const today = new Date().toISOString().split('T')[0];
+      setSelectedDate(today);
+      setSelectedPrice(defaultPrice);
+      onPriceSelected(defaultPrice, today);
     } finally {
       setLoading(false);
     }
