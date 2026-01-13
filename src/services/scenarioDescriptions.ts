@@ -150,17 +150,16 @@ export function getCPPNParticipationOutcome(terms: CapitalProtectedParticipation
 export function getCPPNKnockInTriggered(terms: CapitalProtectedParticipationTerms, notional: number = 100000): ScenarioDescription {
   const kiPct = terms.knockInLevelPct || 70;
   const strikePct = terms.downsideStrikePct || kiPct;
-  const exampleDrop = kiPct * 0.85; // stocks at 85% of KI
-  const exampleReturn = (100 * exampleDrop) / strikePct;
+  const exampleDrop = kiPct * 0.85; // stocks at 85% of KI (e.g., 53% when KI is 62%)
 
   return {
     title: `Stocks Fall Below ${formatNumber(kiPct, 0)}% – Protection Removed`,
     lines: [
       `⚠ Your safety net no longer applies once stocks touch ${formatNumber(kiPct, 0)}%`,
       `⚠ You participate 1-to-1 in further losses`,
-      `✓ Still cushioned: Better than owning stocks directly`,
+      `⚠ Full downside exposure below ${formatNumber(kiPct, 0)}%`,
     ],
-    example: `If stocks drop to ${formatNumber(exampleDrop, 0)}%, you get back ~${formatNumber(exampleReturn, 0)}% (vs ${formatNumber(exampleDrop, 0)}% if you owned stocks)`,
+    example: `If stocks drop to ${formatNumber(exampleDrop, 0)}%, you get back ~${formatNumber(exampleDrop, 0)}% (${formatNumber((notional * exampleDrop) / 10000, 1)}k on ${formatNumber(notional / 1000, 0)}k invested)`,
   };
 }
 

@@ -608,123 +608,139 @@ export function PdfCapitalProtectedParticipationReport({
                 </div>
 
                 {/* Loop through all scenario nodes */}
-                {scenarioFlow.nodes.map((node, nodeIndex) => (
-                  <div key={node.id} style={{ marginBottom: nodeIndex < scenarioFlow.nodes.length - 1 ? 12 : 0 }}>
-                    {/* Decision Question Box */}
-                    <div style={{ 
-                      border: '3px dashed #8b5cf6', 
-                      background: 'rgba(139, 92, 246, 0.08)', 
-                      borderRadius: 12, 
-                      padding: '10px 12px',
-                      textAlign: 'center',
-                      marginBottom: 10
-                    }}>
-                      <div style={{ fontWeight: 800, fontSize: 11.5, color: 'var(--pdf-ink)', marginBottom: 4 }}>
-                        {node.condition}
-                      </div>
-                      {node.metaChips && node.metaChips.length > 0 && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 6, marginTop: 4 }}>
-                          {node.metaChips.map((chip, i) => (
-                            <span key={i} className="pdf-pill" style={{ fontSize: 9, padding: '2px 8px' }}>
-                              {chip}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* YES / NO Outcome Boxes */}
-                    <div className="pdf-grid-2-eq">
-                      {/* YES Outcome */}
+                {scenarioFlow.nodes.map((node, nodeIndex) => {
+                  // Determine if YES is good or bad based on node ID and content
+                  const isKnockInQuestion = node.id === 'cppn-ki';
+                  const isBonusBarrierQuestion = node.id === 'bonus-barrier';
+                  
+                  // For knock-in: YES (stocks fell) = BAD, NO (stayed above) = GOOD
+                  // For participation upside: YES (went up) = GOOD, NO (stayed flat) = depends
+                  // For bonus barrier: YES (stayed above) = GOOD, NO (breached) = BAD
+                  const yesIsGood = !isKnockInQuestion; // Knock-in is the only case where YES is bad
+                  
+                  const yesColor = yesIsGood ? '#10b981' : '#f59e0b'; // Green if good, amber if bad
+                  const yesBg = yesIsGood ? 'rgba(16, 185, 129, 0.08)' : 'rgba(245, 158, 11, 0.08)';
+                  const noColor = yesIsGood ? '#f97316' : '#10b981'; // Orange if YES was good, green if YES was bad
+                  const noBg = yesIsGood ? 'rgba(249, 115, 22, 0.08)' : 'rgba(16, 185, 129, 0.08)';
+                  
+                  return (
+                    <div key={node.id} style={{ marginBottom: nodeIndex < scenarioFlow.nodes.length - 1 ? 12 : 0 }}>
+                      {/* Decision Question Box */}
                       <div style={{ 
-                        border: '3px solid #10b981', 
-                        background: 'rgba(16, 185, 129, 0.08)', 
+                        border: '3px dashed #8b5cf6', 
+                        background: 'rgba(139, 92, 246, 0.08)', 
                         borderRadius: 12, 
-                        padding: 10,
-                        position: 'relative'
+                        padding: '10px 12px',
+                        textAlign: 'center',
+                        marginBottom: 10
                       }}>
-                        <div style={{ 
-                          position: 'absolute', 
-                          left: 0, 
-                          top: 0, 
-                          bottom: 0, 
-                          width: 28,
-                          background: '#10b981',
-                          borderRadius: '12px 0 0 12px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: 'white',
-                          fontWeight: 900,
-                          fontSize: 11,
-                          writingMode: 'vertical-rl',
-                          transform: 'rotate(180deg)'
-                        }}>
-                          YES
+                        <div style={{ fontWeight: 800, fontSize: 11.5, color: 'var(--pdf-ink)', marginBottom: 4 }}>
+                          {node.condition}
                         </div>
-                        <div style={{ marginLeft: 32 }}>
-                          <div style={{ fontWeight: 800, fontSize: 11, color: 'var(--pdf-ink)', marginBottom: 6 }}>
-                            {node.yes.title}
-                          </div>
-                          <div className="pdf-mini pdf-muted" style={{ lineHeight: 1.5 }}>
-                            {node.yes.lines.map((line, i) => (
-                              <div key={i}>{line}</div>
+                        {node.metaChips && node.metaChips.length > 0 && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 6, marginTop: 4 }}>
+                            {node.metaChips.map((chip, i) => (
+                              <span key={i} className="pdf-pill" style={{ fontSize: 9, padding: '2px 8px' }}>
+                                {chip}
+                              </span>
                             ))}
                           </div>
-                          {node.yes.note && (
-                            <div className="pdf-mini pdf-muted" style={{ marginTop: 6, fontStyle: 'italic', fontSize: 9, color: 'var(--pdf-faint)' }}>
-                              {node.yes.note}
-                            </div>
-                          )}
-                        </div>
+                        )}
                       </div>
 
-                      {/* NO Outcome */}
-                      <div style={{ 
-                        border: '3px solid #f97316', 
-                        background: 'rgba(249, 115, 22, 0.08)', 
-                        borderRadius: 12, 
-                        padding: 10,
-                        position: 'relative'
-                      }}>
+                      {/* YES / NO Outcome Boxes */}
+                      <div className="pdf-grid-2-eq">
+                        {/* YES Outcome */}
                         <div style={{ 
-                          position: 'absolute', 
-                          left: 0, 
-                          top: 0, 
-                          bottom: 0, 
-                          width: 28,
-                          background: '#f97316',
-                          borderRadius: '12px 0 0 12px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: 'white',
-                          fontWeight: 900,
-                          fontSize: 11,
-                          writingMode: 'vertical-rl',
-                          transform: 'rotate(180deg)'
+                          border: `3px solid ${yesColor}`, 
+                          background: yesBg, 
+                          borderRadius: 12, 
+                          padding: 10,
+                          position: 'relative'
                         }}>
-                          NO
-                        </div>
-                        <div style={{ marginLeft: 32 }}>
-                          <div style={{ fontWeight: 800, fontSize: 11, color: 'var(--pdf-ink)', marginBottom: 6 }}>
-                            {node.no.title}
+                          <div style={{ 
+                            position: 'absolute', 
+                            left: 0, 
+                            top: 0, 
+                            bottom: 0, 
+                            width: 28,
+                            background: yesColor,
+                            borderRadius: '12px 0 0 12px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                            fontWeight: 900,
+                            fontSize: 11,
+                            writingMode: 'vertical-rl',
+                            transform: 'rotate(180deg)'
+                          }}>
+                            YES
                           </div>
-                          <div className="pdf-mini pdf-muted" style={{ lineHeight: 1.5 }}>
-                            {node.no.lines.map((line, i) => (
-                              <div key={i}>{line}</div>
-                            ))}
-                          </div>
-                          {node.no.note && (
-                            <div className="pdf-mini pdf-muted" style={{ marginTop: 6, fontStyle: 'italic', fontSize: 9, color: 'var(--pdf-faint)' }}>
-                              {node.no.note}
+                          <div style={{ marginLeft: 32 }}>
+                            <div style={{ fontWeight: 800, fontSize: 11, color: 'var(--pdf-ink)', marginBottom: 6 }}>
+                              {node.yes.title}
                             </div>
-                          )}
+                            <div className="pdf-mini pdf-muted" style={{ lineHeight: 1.5 }}>
+                              {node.yes.lines.map((line, i) => (
+                                <div key={i}>{line}</div>
+                              ))}
+                            </div>
+                            {node.yes.note && (
+                              <div className="pdf-mini pdf-muted" style={{ marginTop: 6, fontStyle: 'italic', fontSize: 9, color: 'var(--pdf-faint)' }}>
+                                {node.yes.note}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* NO Outcome */}
+                        <div style={{ 
+                          border: `3px solid ${noColor}`, 
+                          background: noBg, 
+                          borderRadius: 12, 
+                          padding: 10,
+                          position: 'relative'
+                        }}>
+                          <div style={{ 
+                            position: 'absolute', 
+                            left: 0, 
+                            top: 0, 
+                            bottom: 0, 
+                            width: 28,
+                            background: noColor,
+                            borderRadius: '12px 0 0 12px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                            fontWeight: 900,
+                            fontSize: 11,
+                            writingMode: 'vertical-rl',
+                            transform: 'rotate(180deg)'
+                          }}>
+                            NO
+                          </div>
+                          <div style={{ marginLeft: 32 }}>
+                            <div style={{ fontWeight: 800, fontSize: 11, color: 'var(--pdf-ink)', marginBottom: 6 }}>
+                              {node.no.title}
+                            </div>
+                            <div className="pdf-mini pdf-muted" style={{ lineHeight: 1.5 }}>
+                              {node.no.lines.map((line, i) => (
+                                <div key={i}>{line}</div>
+                              ))}
+                            </div>
+                            {node.no.note && (
+                              <div className="pdf-mini pdf-muted" style={{ marginTop: 6, fontStyle: 'italic', fontSize: 9, color: 'var(--pdf-faint)' }}>
+                                {node.no.note}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             );
           })()}
