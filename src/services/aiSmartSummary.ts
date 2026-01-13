@@ -4,14 +4,11 @@
  * MAXIMUM OpenAI usage for comprehensive position intelligence
  */
 
-import OpenAI from 'openai';
 import type { PositionSnapshot } from './positionEvaluator';
 import type { InvestmentPosition } from '../types/investment';
 
-const openai = new OpenAI({
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY || '',
-  dangerouslyAllowBrowser: true,
-});
+const OPENAI_API_KEY = (import.meta as unknown as { env: { VITE_OPENAI_API_KEY?: string } }).env.VITE_OPENAI_API_KEY || '';
+const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
 export interface SmartSummary {
   oneLiner: string; // Ultra-concise position summary
@@ -70,25 +67,38 @@ Be clear, educational, and investor-friendly. No jargon without explanation. No 
 `;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
-      messages: [
-        {
-          role: 'system',
-          content: `You create clear, educational summaries for retail investors. 
-          Focus on understanding, not advice. Use simple language. Be helpful and calm.`,
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 1500,
-      response_format: { type: 'json_object' },
+    const response = await fetch(OPENAI_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: `You create clear, educational summaries for retail investors. 
+            Focus on understanding, not advice. Use simple language. Be helpful and calm.`,
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.7,
+        max_tokens: 1500,
+        response_format: { type: 'json_object' },
+      }),
     });
 
-    const result = JSON.parse(completion.choices[0].message.content || '{}');
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    const result = JSON.parse(content || '{}');
     return result as SmartSummary;
   } catch (error) {
     console.error('Smart summary generation failed:', error);
@@ -117,23 +127,35 @@ Think "explaining to a friend at dinner" level of simplicity.
 `;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
-      messages: [
-        {
-          role: 'system',
-          content: 'Explain complex financial products in the simplest possible terms.',
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-      temperature: 0.8,
-      max_tokens: 300,
+    const response = await fetch(OPENAI_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: 'Explain complex financial products in the simplest possible terms.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.8,
+        max_tokens: 300,
+      }),
     });
 
-    return completion.choices[0].message.content || 'Your investment outcome based on current market conditions.';
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || 'Your investment outcome based on current market conditions.';
   } catch (error) {
     return `Your investment is currently worth $${snapshot.indicativeOutcomeValue}, which is a ${
       snapshot.netPnLPct >= 0 ? 'gain' : 'loss'
@@ -178,23 +200,35 @@ Educational and clear. No predictions.
 `;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
-      messages: [
-        {
-          role: 'system',
-          content: 'Provide clear comparative analysis without predictions.',
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 400,
+    const response = await fetch(OPENAI_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: 'Provide clear comparative analysis without predictions.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.7,
+        max_tokens: 400,
+      }),
     });
 
-    return completion.choices[0].message.content || 'Scenarios show a range of possible outcomes at maturity.';
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || 'Scenarios show a range of possible outcomes at maturity.';
   } catch (error) {
     return `Current value is between best case ($${best.indicativeOutcomeValue}) and worst case ($${worst.indicativeOutcomeValue}). Final outcome depends on underlying price levels at maturity.`;
   }

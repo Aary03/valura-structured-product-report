@@ -4,13 +4,10 @@
  * MAXIMIZES OpenAI usage for investor education
  */
 
-import OpenAI from 'openai';
 import type { PositionSnapshot } from './positionEvaluator';
 
-const openai = new OpenAI({
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY || '',
-  dangerouslyAllowBrowser: true,
-});
+const OPENAI_API_KEY = (import.meta as unknown as { env: { VITE_OPENAI_API_KEY?: string } }).env.VITE_OPENAI_API_KEY || '';
+const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
 /**
  * Generate AI explanation for a specific scenario
@@ -42,24 +39,36 @@ Use simple language. No jargon unless explained. Focus on helping them understan
 `;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
-      messages: [
-        {
-          role: 'system',
-          content: `You explain structured products to investors. Be clear and educational. 
-          Never give investment advice. Only explain mechanics and outcomes based on product rules.`,
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 300,
+    const response = await fetch(OPENAI_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: `You explain structured products to investors. Be clear and educational. 
+            Never give investment advice. Only explain mechanics and outcomes based on product rules.`,
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.7,
+        max_tokens: 300,
+      }),
     });
 
-    return completion.choices[0].message.content || 'Analysis unavailable';
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || 'Analysis unavailable';
   } catch (error) {
     console.error('AI scenario explanation failed:', error);
     return snapshot.reasonText;
@@ -106,23 +115,35 @@ Be educational and clear. No predictions or advice.
 `;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
-      messages: [
-        {
-          role: 'system',
-          content: 'You explain investment scenarios clearly without giving advice.',
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 400,
+    const response = await fetch(OPENAI_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: 'You explain investment scenarios clearly without giving advice.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.7,
+        max_tokens: 400,
+      }),
     });
 
-    return completion.choices[0].message.content || 'Scenario comparison unavailable';
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || 'Scenario comparison unavailable';
   } catch (error) {
     console.error('Scenario comparison failed:', error);
     return `Best case: ${best.name} with ${best.snapshot.netPnLPct.toFixed(1)}% return. Worst case: ${worst.name} with ${worst.snapshot.netPnLPct.toFixed(1)}% return.`;
@@ -153,23 +174,35 @@ Be clear and calm. No alarmist language. Educational only.
 `;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
-      messages: [
-        {
-          role: 'system',
-          content: 'Explain risk changes clearly and calmly. Educational tone.',
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-      temperature: 0.6,
-      max_tokens: 200,
+    const response = await fetch(OPENAI_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: 'Explain risk changes clearly and calmly. Educational tone.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.6,
+        max_tokens: 200,
+      }),
     });
 
-    return completion.choices[0].message.content || 'Risk status updated.';
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || 'Risk status updated.';
   } catch (error) {
     return `Status changed from ${fromStatus} to ${toStatus}. Current level at ${(currentLevel * 100).toFixed(1)}%.`;
   }

@@ -4,14 +4,11 @@
  * MAXIMIZES OpenAI for comprehensive insights
  */
 
-import OpenAI from 'openai';
 import type { PositionSnapshot } from './positionEvaluator';
 import type { InvestmentPosition } from '../types/investment';
 
-const openai = new OpenAI({
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY || '',
-  dangerouslyAllowBrowser: true,
-});
+const OPENAI_API_KEY = (import.meta as unknown as { env: { VITE_OPENAI_API_KEY?: string } }).env.VITE_OPENAI_API_KEY || '';
+const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
 export interface RiskAnalysisResult {
   overallAssessment: string; // Comprehensive risk summary
@@ -79,26 +76,39 @@ Be thorough but clear. Educational focus. No advice or predictions.
 `;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
-      messages: [
-        {
-          role: 'system',
-          content: `You are a structured products expert explaining risks to investors. 
-          Be comprehensive and educational. Never give investment advice or make predictions.
-          Focus on product mechanics and observable facts.`,
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 2000,
-      response_format: { type: 'json_object' },
+    const response = await fetch(OPENAI_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a structured products expert explaining risks to investors. 
+            Be comprehensive and educational. Never give investment advice or make predictions.
+            Focus on product mechanics and observable facts.`,
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.7,
+        max_tokens: 2000,
+        response_format: { type: 'json_object' },
+      }),
     });
 
-    const result = JSON.parse(completion.choices[0].message.content || '{}');
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    const result = JSON.parse(content || '{}');
     return result as RiskAnalysisResult;
   } catch (error) {
     console.error('Risk analysis failed:', error);
@@ -131,18 +141,31 @@ Example: ["Underlying price falling below 70% barrier triggers share conversion"
 `;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
-      messages: [
-        { role: 'system', content: 'List risks clearly without being alarmist.' },
-        { role: 'user', content: prompt },
-      ],
-      temperature: 0.6,
-      max_tokens: 400,
-      response_format: { type: 'json_object' },
+    const response = await fetch(OPENAI_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: 'List risks clearly without being alarmist.' },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.6,
+        max_tokens: 400,
+        response_format: { type: 'json_object' },
+      }),
     });
 
-    const result = JSON.parse(completion.choices[0].message.content || '{"risks":[]}');
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    const result = JSON.parse(content || '{"risks":[]}');
     return result.risks || [];
   } catch (error) {
     return ['Market volatility may impact final value', 'Barrier levels should be monitored'];

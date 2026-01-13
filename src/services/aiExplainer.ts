@@ -18,14 +18,12 @@
  * - Only mechanics and current state
  */
 
-import OpenAI from 'openai';
 import type { PositionSnapshot } from './positionEvaluator';
 import type { InvestmentPosition } from '../types/investment';
 
-const openai = new OpenAI({
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY || '',
-  dangerouslyAllowBrowser: true, // Note: Move to backend for production!
-});
+// Use same pattern as existing openai.ts service
+const OPENAI_API_KEY = (import.meta as unknown as { env: { VITE_OPENAI_API_KEY?: string } }).env.VITE_OPENAI_API_KEY || '';
+const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
 export interface AIExplanation {
   headline: string; // One-line summary of current state
@@ -53,34 +51,47 @@ export async function generateAIExplanation(context: {
   const prompt = buildPositionExplanationPrompt(context);
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
-      messages: [
-        {
-          role: 'system',
-          content: SYSTEM_PROMPT,
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 2000,
-      response_format: { type: 'json_object' },
+    const response = await fetch(OPENAI_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: SYSTEM_PROMPT,
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.7,
+        max_tokens: 2000,
+        response_format: { type: 'json_object' },
+      }),
     });
 
-    const response = JSON.parse(completion.choices[0].message.content || '{}');
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    const result = JSON.parse(content || '{}');
 
     return {
-      headline: response.headline || 'Position analysis complete',
-      whatChanged: response.whatChanged,
-      whatToWatch: response.whatToWatch || 'Monitor key levels and upcoming events',
-      scenarioInsights: response.scenarioInsights,
-      riskAnalysis: response.riskAnalysis || currentSnapshot.reasonText,
-      settlementExplanation: response.settlementExplanation || 'Settlement based on current levels',
-      nextSteps: response.nextSteps,
-      glossaryLinks: response.glossaryLinks || [],
+      headline: result.headline || 'Position analysis complete',
+      whatChanged: result.whatChanged,
+      whatToWatch: result.whatToWatch || 'Monitor key levels and upcoming events',
+      scenarioInsights: result.scenarioInsights,
+      riskAnalysis: result.riskAnalysis || currentSnapshot.reasonText,
+      settlementExplanation: result.settlementExplanation || 'Settlement based on current levels',
+      nextSteps: result.nextSteps,
+      glossaryLinks: result.glossaryLinks || [],
     };
   } catch (error) {
     console.error('AI explanation failed:', error);
@@ -118,18 +129,31 @@ Remember:
 `;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: prompt },
-      ],
-      temperature: 0.7,
-      max_tokens: 1500,
-      response_format: { type: 'json_object' },
+    const response = await fetch(OPENAI_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.7,
+        max_tokens: 1500,
+        response_format: { type: 'json_object' },
+      }),
     });
 
-    return JSON.parse(completion.choices[0].message.content || '{}');
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    return JSON.parse(content || '{}');
   } catch (error) {
     console.error('Scenario insights failed:', error);
     return {};
@@ -166,17 +190,29 @@ Be specific about numbers but avoid predictions or advice.
 `;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: prompt },
-      ],
-      temperature: 0.7,
-      max_tokens: 300,
+    const response = await fetch(OPENAI_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.7,
+        max_tokens: 300,
+      }),
     });
 
-    return completion.choices[0].message.content || 'Monitor key levels and upcoming events.';
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || 'Monitor key levels and upcoming events.';
   } catch (error) {
     console.error('What to watch generation failed:', error);
     return 'Monitor your position regularly and watch for barrier levels and coupon dates.';
