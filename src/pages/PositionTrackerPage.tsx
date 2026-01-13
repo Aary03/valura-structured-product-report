@@ -462,21 +462,44 @@ function PositionCard({
 
       {/* Content */}
       <div className="p-6 space-y-6 bg-gradient-to-b from-white to-grey-light/20">
-        {/* Value Card */}
-        <PositionValueCard value={value} currency={currency} />
+        {/* 🤖 AI-POWERED MODULAR CARD - Shows "If Settled Today" + Scenarios + AI Insights */}
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="px-3 py-1 bg-purple-500 text-white rounded-lg text-xs font-bold">
+              ⭐ AI-ENHANCED
+            </div>
+            <span className="text-sm text-muted">Powered by GPT-4</span>
+          </div>
+          <StandalonePositionCard
+            position={position}
+            marketPrices={marketData.underlyingPrices}
+            showAI={true}
+          />
+        </div>
 
-        {/* Money Flow Visualization */}
-        <MoneyFlowVisualization 
-          value={value} 
-          currency={currency}
-          initialInvestment={position.notional}
-        />
+        {/* Original Components (Collapsible) */}
+        <details className="section-card">
+          <summary className="cursor-pointer font-bold text-lg text-valura-ink p-4">
+            📊 Detailed Analysis (Expand for more)
+          </summary>
+          <div className="p-4 space-y-6">
+            {/* Value Card */}
+            <PositionValueCard value={value} currency={currency} />
 
-        {/* Time Simulator - NEW! */}
-        <TimeSimulator position={position} currentMarketData={marketData} />
+            {/* Money Flow Visualization */}
+            <MoneyFlowVisualization 
+              value={value} 
+              currency={currency}
+              initialInvestment={position.notional}
+            />
 
-        {/* Scenario Analysis */}
-        <ScenarioAnalysis position={position} currentMarketData={marketData} />
+            {/* Time Simulator */}
+            <TimeSimulator position={position} currentMarketData={marketData} />
+
+            {/* Scenario Analysis */}
+            <ScenarioAnalysis position={position} currentMarketData={marketData} />
+          </div>
+        </details>
 
         {/* Settlement Preview */}
         <SettlementPreview 
