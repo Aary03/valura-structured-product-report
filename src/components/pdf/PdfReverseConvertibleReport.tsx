@@ -390,7 +390,7 @@ export function PdfReverseConvertibleReport({ reportData }: { reportData: Revers
                 barrierLevel={barrierLevel}
                 strikeLevel={strikeLevel}
                 initialFixings={{}}
-                basketType={terms.basketType}
+                basketType={terms.basketType === 'equally_weighted' ? 'worst_of' : terms.basketType}
                 worstUnderlyingIndex={reportData.worstUnderlyingIndex}
                 pdfMode
               />
