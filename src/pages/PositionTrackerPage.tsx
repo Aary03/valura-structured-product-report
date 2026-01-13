@@ -464,11 +464,19 @@ function PositionCard({
       <div className="p-6 space-y-6 bg-gradient-to-b from-white to-grey-light/20">
         {/* 🤖 AI-POWERED MODULAR CARD - Shows "If Settled Today" + Scenarios + AI Insights */}
         <div className="mb-8">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="px-3 py-1 bg-purple-500 text-white rounded-lg text-xs font-bold">
-              ⭐ AI-ENHANCED
+          <div className="flex items-center justify-between mb-4 p-4 bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl text-white shadow-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center animate-pulse">
+                <span className="text-2xl">⭐</span>
+              </div>
+              <div>
+                <div className="font-bold text-lg">AI-Enhanced Position Analysis</div>
+                <div className="text-sm opacity-90">Powered by GPT-4 • Auto-generating insights</div>
+              </div>
             </div>
-            <span className="text-sm text-muted">Powered by GPT-4</span>
+            <div className="px-4 py-2 bg-white/20 backdrop-blur-sm rounded-lg text-xs font-semibold">
+              LIVE AI
+            </div>
           </div>
           <StandalonePositionCard
             position={position}
@@ -477,12 +485,21 @@ function PositionCard({
           />
         </div>
 
+        {/* Divider */}
+        <div className="flex items-center gap-4 my-8">
+          <div className="flex-1 border-t-2 border-purple-200"></div>
+          <div className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg text-sm font-semibold">
+            Advanced Tools Below
+          </div>
+          <div className="flex-1 border-t-2 border-purple-200"></div>
+        </div>
+
         {/* Original Components (Collapsible) */}
-        <details className="section-card">
-          <summary className="cursor-pointer font-bold text-lg text-valura-ink p-4">
-            📊 Detailed Analysis (Expand for more)
+        <details open className="section-card">
+          <summary className="cursor-pointer font-bold text-lg text-valura-ink p-4 hover:bg-purple-50 rounded-lg transition-colors">
+            📊 Additional Analysis Tools (Click to collapse)
           </summary>
-          <div className="p-4 space-y-6">
+          <div className="p-4 space-y-6 border-t border-border mt-2">
             {/* Value Card */}
             <PositionValueCard value={value} currency={currency} />
 
