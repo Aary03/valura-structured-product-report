@@ -18,7 +18,7 @@ import { getLogoWithFallback } from '../../utils/logo';
 import { formatNumber, formatPercent } from '../../core/utils/math';
 import { generateInvestmentInsights, type InvestmentInsights } from '../../services/aiInsights';
 import { AIInsightsCard } from './AIInsightsCard';
-import { generateWhyThisStock, getCachedWhyThisStock, cacheWhyThisStock, type WhyThisStockResponse } from '../../services/ai/whyThisStock';
+import { generateWhyThisStock, getCachedWhyThisStock, cacheWhyThisStock, clearCachedWhyThisStock, type WhyThisStockResponse } from '../../services/ai/whyThisStock';
 import { WhyThisStockCard } from './WhyThisStockCard';
 import { AIThinkingLoader } from '../common/AIThinkingLoader';
 
@@ -115,11 +115,17 @@ export function UnderlyingCombinedCard({
       knockInLevelPct: productType === 'CPPN' ? (productTerms as CapitalProtectedParticipationTerms).knockInLevelPct : undefined,
     };
 
-    const cached = getCachedWhyThisStock(summary.symbol, productTermsForCache);
-    if (cached) {
-      setWhyThisStock(cached);
-      setActiveTab('why');
-      return;
+    // If regenerating (already have data), clear the cache first
+    if (whyThisStock) {
+      clearCachedWhyThisStock(summary.symbol, productTermsForCache);
+    } else {
+      // Check cache first for initial generation
+      const cached = getCachedWhyThisStock(summary.symbol, productTermsForCache);
+      if (cached) {
+        setWhyThisStock(cached);
+        setActiveTab('why');
+        return;
+      }
     }
 
     setLoadingWhyThisStock(true);

@@ -13,7 +13,7 @@ import { User, MapPin, Globe, ChevronDown, ChevronUp, Building2, Calendar, Loade
 import { getLogoWithFallback } from '../../utils/logo';
 import { generateInvestmentInsights, type InvestmentInsights } from '../../services/aiInsights';
 import { AIInsightsCard } from './AIInsightsCard';
-import { generateWhyThisStock, getCachedWhyThisStock, cacheWhyThisStock, type WhyThisStockResponse } from '../../services/ai/whyThisStock';
+import { generateWhyThisStock, getCachedWhyThisStock, cacheWhyThisStock, clearCachedWhyThisStock, type WhyThisStockResponse } from '../../services/ai/whyThisStock';
 import { WhyThisStockCard } from './WhyThisStockCard';
 import { AIThinkingLoader } from '../common/AIThinkingLoader';
 
@@ -93,7 +93,7 @@ export function CompanyDescriptionCard({
       return;
     }
 
-    // Check cache first
+    // Build product terms object for caching
     const productTermsForCache = {
       barrierPct: productType === 'RC' ? (productTerms as ReverseConvertibleTerms).barrierPct : undefined,
       couponRatePct: productType === 'RC' ? (productTerms as ReverseConvertibleTerms).couponRatePct : undefined,
@@ -108,11 +108,17 @@ export function CompanyDescriptionCard({
       knockInLevelPct: productType === 'CPPN' ? (productTerms as CapitalProtectedParticipationTerms).knockInLevelPct : undefined,
     };
 
-    const cached = getCachedWhyThisStock(summary.symbol, productTermsForCache);
-    if (cached && !showWhyThisStock) {
-      setWhyThisStock(cached);
-      setShowWhyThisStock(true);
-      return;
+    // If regenerating (already showing), clear the cache first
+    if (showWhyThisStock) {
+      clearCachedWhyThisStock(summary.symbol, productTermsForCache);
+    } else {
+      // Check cache first for initial generation
+      const cached = getCachedWhyThisStock(summary.symbol, productTermsForCache);
+      if (cached) {
+        setWhyThisStock(cached);
+        setShowWhyThisStock(true);
+        return;
+      }
     }
 
     setLoadingWhyThisStock(true);

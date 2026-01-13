@@ -347,3 +347,15 @@ export function cacheWhyThisStock(symbol: string, productTerms: WhyThisStockRequ
     console.warn('Failed to cache Why This Stock:', error);
   }
 }
+
+/**
+ * Clear cached Why This Stock response (for regeneration)
+ */
+export function clearCachedWhyThisStock(symbol: string, productTerms: WhyThisStockRequest['productTerms']): void {
+  try {
+    const key = getWhyThisStockCacheKey(symbol, productTerms);
+    sessionStorage.removeItem(key);
+  } catch (error) {
+    console.warn('Failed to clear cached Why This Stock:', error);
+  }
+}
