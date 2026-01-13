@@ -11,6 +11,7 @@ import valuraLogo from '../../../Valura.ai - Logo (Black).png';
 import { CppnPayoffGraph } from '../report/CppnPayoffGraph';
 import { PerformanceGraph } from '../report/PerformanceGraph';
 import { buildUnderlyingSummary, type UnderlyingSummary } from '../../services/underlyingSummary';
+import { buildCPPNFlow } from '../scenarios/builders/buildCPPNFlow';
 
 declare global {
   interface Window {
@@ -596,222 +597,137 @@ export function PdfCapitalProtectedParticipationReport({
 
           <div style={{ height: 8 }} />
 
-          {/* Understand the Scenarios - Enhanced Flowchart */}
-          <div style={{ marginBottom: 10 }}>
-            <div className="pdf-section-title" style={{ marginBottom: 10 }}>Understand the Scenarios</div>
-            <div className="pdf-mini pdf-muted" style={{ marginBottom: 10 }}>
-              What happens at maturity based on how the underlying performs
-            </div>
+          {/* Understand the Scenarios - Enhanced Flowchart (Multiple Nodes) */}
+          {(() => {
+            const scenarioFlow = buildCPPNFlow(terms);
+            return (
+              <div style={{ marginBottom: 10 }}>
+                <div className="pdf-section-title" style={{ marginBottom: 10 }}>Understand the Scenarios</div>
+                <div className="pdf-mini pdf-muted" style={{ marginBottom: 10 }}>
+                  {scenarioFlow.subtitle}
+                </div>
 
-            {/* Decision Question Box */}
-            <div style={{ 
-              border: '3px dashed #8b5cf6', 
-              background: 'rgba(139, 92, 246, 0.08)', 
-              borderRadius: 12, 
-              padding: '10px 12px',
-              textAlign: 'center',
-              marginBottom: 10
-            }}>
-              <div style={{ fontWeight: 800, fontSize: 11.5, color: 'var(--pdf-ink)', marginBottom: 4 }}>
-                {terms.bonusEnabled 
-                  ? `Did ${terms.basketType === 'single' ? 'stock' : 'worst-of basket'} stay above ${formatNumber(terms.bonusBarrierPct || 0, 0)}% throughout the entire period?`
-                  : terms.participationDirection === 'up'
-                  ? `Did ${terms.basketType === 'single' ? 'stock' : 'worst-of basket'} go up (above ${formatNumber(terms.participationStartPct, 0)}%)?`
-                  : `Did ${terms.basketType === 'single' ? 'stock' : 'worst-of basket'} drop below ${formatNumber(terms.knockInLevelPct ?? terms.participationStartPct, 0)}%?`}
+                {/* Loop through all scenario nodes */}
+                {scenarioFlow.nodes.map((node, nodeIndex) => (
+                  <div key={node.id} style={{ marginBottom: nodeIndex < scenarioFlow.nodes.length - 1 ? 12 : 0 }}>
+                    {/* Decision Question Box */}
+                    <div style={{ 
+                      border: '3px dashed #8b5cf6', 
+                      background: 'rgba(139, 92, 246, 0.08)', 
+                      borderRadius: 12, 
+                      padding: '10px 12px',
+                      textAlign: 'center',
+                      marginBottom: 10
+                    }}>
+                      <div style={{ fontWeight: 800, fontSize: 11.5, color: 'var(--pdf-ink)', marginBottom: 4 }}>
+                        {node.condition}
+                      </div>
+                      {node.metaChips && node.metaChips.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 6, marginTop: 4 }}>
+                          {node.metaChips.map((chip, i) => (
+                            <span key={i} className="pdf-pill" style={{ fontSize: 9, padding: '2px 8px' }}>
+                              {chip}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* YES / NO Outcome Boxes */}
+                    <div className="pdf-grid-2-eq">
+                      {/* YES Outcome */}
+                      <div style={{ 
+                        border: '3px solid #10b981', 
+                        background: 'rgba(16, 185, 129, 0.08)', 
+                        borderRadius: 12, 
+                        padding: 10,
+                        position: 'relative'
+                      }}>
+                        <div style={{ 
+                          position: 'absolute', 
+                          left: 0, 
+                          top: 0, 
+                          bottom: 0, 
+                          width: 28,
+                          background: '#10b981',
+                          borderRadius: '12px 0 0 12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          fontWeight: 900,
+                          fontSize: 11,
+                          writingMode: 'vertical-rl',
+                          transform: 'rotate(180deg)'
+                        }}>
+                          YES
+                        </div>
+                        <div style={{ marginLeft: 32 }}>
+                          <div style={{ fontWeight: 800, fontSize: 11, color: 'var(--pdf-ink)', marginBottom: 6 }}>
+                            {node.yes.title}
+                          </div>
+                          <div className="pdf-mini pdf-muted" style={{ lineHeight: 1.5 }}>
+                            {node.yes.lines.map((line, i) => (
+                              <div key={i}>{line}</div>
+                            ))}
+                          </div>
+                          {node.yes.note && (
+                            <div className="pdf-mini pdf-muted" style={{ marginTop: 6, fontStyle: 'italic', fontSize: 9, color: 'var(--pdf-faint)' }}>
+                              {node.yes.note}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* NO Outcome */}
+                      <div style={{ 
+                        border: '3px solid #f97316', 
+                        background: 'rgba(249, 115, 22, 0.08)', 
+                        borderRadius: 12, 
+                        padding: 10,
+                        position: 'relative'
+                      }}>
+                        <div style={{ 
+                          position: 'absolute', 
+                          left: 0, 
+                          top: 0, 
+                          bottom: 0, 
+                          width: 28,
+                          background: '#f97316',
+                          borderRadius: '12px 0 0 12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          fontWeight: 900,
+                          fontSize: 11,
+                          writingMode: 'vertical-rl',
+                          transform: 'rotate(180deg)'
+                        }}>
+                          NO
+                        </div>
+                        <div style={{ marginLeft: 32 }}>
+                          <div style={{ fontWeight: 800, fontSize: 11, color: 'var(--pdf-ink)', marginBottom: 6 }}>
+                            {node.no.title}
+                          </div>
+                          <div className="pdf-mini pdf-muted" style={{ lineHeight: 1.5 }}>
+                            {node.no.lines.map((line, i) => (
+                              <div key={i}>{line}</div>
+                            ))}
+                          </div>
+                          {node.no.note && (
+                            <div className="pdf-mini pdf-muted" style={{ marginTop: 6, fontStyle: 'italic', fontSize: 9, color: 'var(--pdf-faint)' }}>
+                              {node.no.note}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 6, marginTop: 4 }}>
-                {terms.bonusEnabled ? (
-                  <>
-                    <span className="pdf-pill" style={{ fontSize: 9, padding: '2px 8px' }}>Bonus: {formatNumber(terms.bonusLevelPct || 0, 0)}%</span>
-                    <span className="pdf-pill" style={{ fontSize: 9, padding: '2px 8px' }}>Barrier: {formatNumber(terms.bonusBarrierPct || 0, 0)}%</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="pdf-pill" style={{ fontSize: 9, padding: '2px 8px' }}>Floor: {formatNumber(terms.capitalProtectionPct, 0)}%</span>
-                    <span className="pdf-pill" style={{ fontSize: 9, padding: '2px 8px' }}>Participation: {formatNumber(terms.participationRatePct, 0)}%</span>
-                    <span className="pdf-pill" style={{ fontSize: 9, padding: '2px 8px' }}>{capLabel === 'None' ? 'No Cap' : `Cap: ${capLabel}`}</span>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* YES / NO Outcome Boxes */}
-            <div className="pdf-grid-2-eq">
-              {terms.bonusEnabled ? (
-                <>
-                  {/* YES - Bonus Outcome */}
-                  <div style={{ 
-                    border: '3px solid #10b981', 
-                    background: 'rgba(16, 185, 129, 0.08)', 
-                    borderRadius: 12, 
-                    padding: 10,
-                    position: 'relative'
-                  }}>
-                    <div style={{ 
-                      position: 'absolute', 
-                      left: 0, 
-                      top: 0, 
-                      bottom: 0, 
-                      width: 28,
-                      background: '#10b981',
-                      borderRadius: '12px 0 0 12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'white',
-                      fontWeight: 900,
-                      fontSize: 11,
-                      writingMode: 'vertical-rl',
-                      transform: 'rotate(180deg)'
-                    }}>
-                      YES
-                    </div>
-                    <div style={{ marginLeft: 32 }}>
-                      <div style={{ fontWeight: 800, fontSize: 11, color: 'var(--pdf-ink)', marginBottom: 6 }}>
-                        Stocks Stay Above {formatNumber(terms.bonusBarrierPct || 0, 0)}%
-                      </div>
-                      <div className="pdf-mini pdf-muted" style={{ lineHeight: 1.5 }}>
-                        <div>✓ You get back all your money (100%)</div>
-                        <div>✓ Plus bonus: {formatNumber(terms.bonusLevelPct || 0, 0)}%</div>
-                        <div>✓ Total return: ~{formatNumber(terms.bonusLevelPct || 0, 0)}%</div>
-                      </div>
-                      <div className="pdf-mini pdf-muted" style={{ marginTop: 6, fontStyle: 'italic', fontSize: 9, color: 'var(--pdf-faint)' }}>
-                        Invest ${formatNumber(terms.notional, 0)} → Receive ${formatNumber(terms.notional * (1 + (terms.bonusLevelPct || 0) / 100), 0)}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* NO - Barrier Breached */}
-                  <div style={{ 
-                    border: '3px solid #f97316', 
-                    background: 'rgba(249, 115, 22, 0.08)', 
-                    borderRadius: 12, 
-                    padding: 10,
-                    position: 'relative'
-                  }}>
-                    <div style={{ 
-                      position: 'absolute', 
-                      left: 0, 
-                      top: 0, 
-                      bottom: 0, 
-                      width: 28,
-                      background: '#f97316',
-                      borderRadius: '12px 0 0 12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'white',
-                      fontWeight: 900,
-                      fontSize: 11,
-                      writingMode: 'vertical-rl',
-                      transform: 'rotate(180deg)'
-                    }}>
-                      NO
-                    </div>
-                    <div style={{ marginLeft: 32 }}>
-                      <div style={{ fontWeight: 800, fontSize: 11, color: 'var(--pdf-ink)', marginBottom: 6 }}>
-                        Barrier Touched/Breached
-                      </div>
-                      <div className="pdf-mini pdf-muted" style={{ lineHeight: 1.5 }}>
-                        <div>⚠ No bonus protection</div>
-                        <div>⚠ Payoff follows underlying 1:1</div>
-                        <div>⚠ Full downside exposure</div>
-                      </div>
-                      <div className="pdf-mini pdf-muted" style={{ marginTop: 6, fontStyle: 'italic', fontSize: 9, color: 'var(--pdf-faint)' }}>
-                        If stocks drop to 53%, you get ~53% of your investment
-                      </div>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  {/* YES - Participating Outcome */}
-                  <div style={{ 
-                    border: '3px solid #10b981', 
-                    background: 'rgba(16, 185, 129, 0.08)', 
-                    borderRadius: 12, 
-                    padding: 10,
-                    position: 'relative'
-                  }}>
-                    <div style={{ 
-                      position: 'absolute', 
-                      left: 0, 
-                      top: 0, 
-                      bottom: 0, 
-                      width: 28,
-                      background: '#10b981',
-                      borderRadius: '12px 0 0 12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'white',
-                      fontWeight: 900,
-                      fontSize: 11,
-                      writingMode: 'vertical-rl',
-                      transform: 'rotate(180deg)'
-                    }}>
-                      YES
-                    </div>
-                    <div style={{ marginLeft: 32 }}>
-                      <div style={{ fontWeight: 800, fontSize: 11, color: 'var(--pdf-ink)', marginBottom: 6 }}>
-                        Stocks Go Up – You Profit {formatNumber(terms.participationRatePct, 0)}% on the Gains
-                      </div>
-                      <div className="pdf-mini pdf-muted" style={{ lineHeight: 1.5 }}>
-                        <div>✓ For every 1% stocks rise, you gain {formatNumber(terms.participationRatePct / 100, 2)}%</div>
-                        <div>✓ Example: Stocks +20% → You get +{formatNumber(20 * terms.participationRatePct / 100, 1)}%</div>
-                        <div>✓ Maximum return capped at {capLabel}</div>
-                      </div>
-                      <div className="pdf-mini pdf-muted" style={{ marginTop: 6, fontStyle: 'italic', fontSize: 9, color: 'var(--pdf-faint)' }}>
-                        Stocks at 120% → You receive ${formatNumber(terms.notional * 1.244, 0)} on ${formatNumber(terms.notional, 0)} invested
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* NO - Protected Outcome */}
-                  <div style={{ 
-                    border: '3px solid #f97316', 
-                    background: 'rgba(249, 115, 22, 0.08)', 
-                    borderRadius: 12, 
-                    padding: 10,
-                    position: 'relative'
-                  }}>
-                    <div style={{ 
-                      position: 'absolute', 
-                      left: 0, 
-                      top: 0, 
-                      bottom: 0, 
-                      width: 28,
-                      background: '#f97316',
-                      borderRadius: '12px 0 0 12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'white',
-                      fontWeight: 900,
-                      fontSize: 11,
-                      writingMode: 'vertical-rl',
-                      transform: 'rotate(180deg)'
-                    }}>
-                      NO
-                    </div>
-                    <div style={{ marginLeft: 32 }}>
-                      <div style={{ fontWeight: 800, fontSize: 11, color: 'var(--pdf-ink)', marginBottom: 6 }}>
-                        Your Money is Protected
-                      </div>
-                      <div className="pdf-mini pdf-muted" style={{ lineHeight: 1.5 }}>
-                        <div>✓ No matter how far stocks fall, you get back at least {formatNumber(terms.capitalProtectionPct, 0)}%</div>
-                        <div>✓ Zero downside risk below {formatNumber(terms.participationStartPct, 0)}%</div>
-                        <div>✓ Peace of mind: Your principal is safe</div>
-                      </div>
-                      <div className="pdf-mini pdf-muted" style={{ marginTop: 6, fontStyle: 'italic', fontSize: 9, color: 'var(--pdf-faint)' }}>
-                        Even if stocks crash to 50%, you still receive ${formatNumber(terms.notional, 0)} on ${formatNumber(terms.notional, 0)} invested
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
+            );
+          })()}
 
           <div style={{ height: 8 }} />
 
