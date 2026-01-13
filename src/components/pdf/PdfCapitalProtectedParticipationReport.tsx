@@ -596,61 +596,216 @@ export function PdfCapitalProtectedParticipationReport({
 
           <div style={{ height: 8 }} />
 
-          {/* Understand the scenarios */}
-          <div className="pdf-card avoid-break">
-            <div className="pdf-section-title">Understand the scenarios</div>
+          {/* Understand the Scenarios - Enhanced Flowchart */}
+          <div style={{ marginBottom: 10 }}>
+            <div className="pdf-section-title" style={{ marginBottom: 10 }}>Understand the Scenarios</div>
+            <div className="pdf-mini pdf-muted" style={{ marginBottom: 10 }}>
+              What happens at maturity based on how the underlying performs
+            </div>
+
+            {/* Decision Question Box */}
+            <div style={{ 
+              border: '3px dashed #8b5cf6', 
+              background: 'rgba(139, 92, 246, 0.08)', 
+              borderRadius: 12, 
+              padding: '10px 12px',
+              textAlign: 'center',
+              marginBottom: 10
+            }}>
+              <div style={{ fontWeight: 800, fontSize: 11.5, color: 'var(--pdf-ink)', marginBottom: 4 }}>
+                {terms.bonusEnabled 
+                  ? `Did ${terms.basketType === 'single' ? 'stock' : 'worst-of basket'} stay above ${formatNumber(terms.bonusBarrierPct || 0, 0)}% throughout the entire period?`
+                  : terms.participationDirection === 'up'
+                  ? `Did ${terms.basketType === 'single' ? 'stock' : 'worst-of basket'} go up (above ${formatNumber(terms.participationStartPct, 0)}%)?`
+                  : `Did ${terms.basketType === 'single' ? 'stock' : 'worst-of basket'} drop below ${formatNumber(terms.knockInLevelPct ?? terms.participationStartPct, 0)}%?`}
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 6, marginTop: 4 }}>
+                {terms.bonusEnabled ? (
+                  <>
+                    <span className="pdf-pill" style={{ fontSize: 9, padding: '2px 8px' }}>Bonus: {formatNumber(terms.bonusLevelPct || 0, 0)}%</span>
+                    <span className="pdf-pill" style={{ fontSize: 9, padding: '2px 8px' }}>Barrier: {formatNumber(terms.bonusBarrierPct || 0, 0)}%</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="pdf-pill" style={{ fontSize: 9, padding: '2px 8px' }}>Floor: {formatNumber(terms.capitalProtectionPct, 0)}%</span>
+                    <span className="pdf-pill" style={{ fontSize: 9, padding: '2px 8px' }}>Participation: {formatNumber(terms.participationRatePct, 0)}%</span>
+                    <span className="pdf-pill" style={{ fontSize: 9, padding: '2px 8px' }}>{capLabel === 'None' ? 'No Cap' : `Cap: ${capLabel}`}</span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* YES / NO Outcome Boxes */}
             <div className="pdf-grid-2-eq">
               {terms.bonusEnabled ? (
                 <>
-                  <div className="pdf-card pdf-card--inner" style={{ padding: 10, borderColor: 'rgba(16,185,129,0.35)', background: 'rgba(16,185,129,0.06)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <b style={{ color: 'var(--pdf-ink)' }}>Bonus outcome</b>
-                      <span className="pdf-pill good">BL</span>
+                  {/* YES - Bonus Outcome */}
+                  <div style={{ 
+                    border: '3px solid #10b981', 
+                    background: 'rgba(16, 185, 129, 0.08)', 
+                    borderRadius: 12, 
+                    padding: 10,
+                    position: 'relative'
+                  }}>
+                    <div style={{ 
+                      position: 'absolute', 
+                      left: 0, 
+                      top: 0, 
+                      bottom: 0, 
+                      width: 28,
+                      background: '#10b981',
+                      borderRadius: '12px 0 0 12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontWeight: 900,
+                      fontSize: 11,
+                      writingMode: 'vertical-rl',
+                      transform: 'rotate(180deg)'
+                    }}>
+                      YES
                     </div>
-                    <div className="pdf-mini pdf-muted">
-                      <div>• Bonus: {formatNumber(terms.bonusLevelPct, 0)}% if barrier ({formatNumber(terms.bonusBarrierPct, 0)}%) not breached</div>
-                      <div>• Participation: {formatNumber(terms.participationRatePct, 0)}% from strike K = {formatNumber(terms.participationStartPct, 0)}%</div>
-                      <div>• Cap: {capLabel}</div>
+                    <div style={{ marginLeft: 32 }}>
+                      <div style={{ fontWeight: 800, fontSize: 11, color: 'var(--pdf-ink)', marginBottom: 6 }}>
+                        Stocks Stay Above {formatNumber(terms.bonusBarrierPct || 0, 0)}%
+                      </div>
+                      <div className="pdf-mini pdf-muted" style={{ lineHeight: 1.5 }}>
+                        <div>✓ You get back all your money (100%)</div>
+                        <div>✓ Plus bonus: {formatNumber(terms.bonusLevelPct || 0, 0)}%</div>
+                        <div>✓ Total return: ~{formatNumber(terms.bonusLevelPct || 0, 0)}%</div>
+                      </div>
+                      <div className="pdf-mini pdf-muted" style={{ marginTop: 6, fontStyle: 'italic', fontSize: 9, color: 'var(--pdf-faint)' }}>
+                        Invest ${formatNumber(terms.notional, 0)} → Receive ${formatNumber(terms.notional * (1 + (terms.bonusLevelPct || 0) / 100), 0)}
+                      </div>
                     </div>
                   </div>
-                  <div className="pdf-card pdf-card--inner" style={{ padding: 10, borderColor: 'rgba(239,68,68,0.35)', background: 'rgba(239,68,68,0.06)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <b style={{ color: 'var(--pdf-ink)' }}>Barrier breached</b>
-                      <span className="pdf-pill bad">1:1</span>
+
+                  {/* NO - Barrier Breached */}
+                  <div style={{ 
+                    border: '3px solid #f97316', 
+                    background: 'rgba(249, 115, 22, 0.08)', 
+                    borderRadius: 12, 
+                    padding: 10,
+                    position: 'relative'
+                  }}>
+                    <div style={{ 
+                      position: 'absolute', 
+                      left: 0, 
+                      top: 0, 
+                      bottom: 0, 
+                      width: 28,
+                      background: '#f97316',
+                      borderRadius: '12px 0 0 12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontWeight: 900,
+                      fontSize: 11,
+                      writingMode: 'vertical-rl',
+                      transform: 'rotate(180deg)'
+                    }}>
+                      NO
                     </div>
-                    <div className="pdf-mini pdf-muted">
-                      <div>• If barrier ({formatNumber(terms.bonusBarrierPct, 0)}%) breached: payoff = 100·R</div>
-                      <div>• No bonus protection</div>
-                      <div>• Follows underlying performance (1:1)</div>
+                    <div style={{ marginLeft: 32 }}>
+                      <div style={{ fontWeight: 800, fontSize: 11, color: 'var(--pdf-ink)', marginBottom: 6 }}>
+                        Barrier Touched/Breached
+                      </div>
+                      <div className="pdf-mini pdf-muted" style={{ lineHeight: 1.5 }}>
+                        <div>⚠ No bonus protection</div>
+                        <div>⚠ Payoff follows underlying 1:1</div>
+                        <div>⚠ Full downside exposure</div>
+                      </div>
+                      <div className="pdf-mini pdf-muted" style={{ marginTop: 6, fontStyle: 'italic', fontSize: 9, color: 'var(--pdf-faint)' }}>
+                        If stocks drop to 53%, you get ~53% of your investment
+                      </div>
                     </div>
                   </div>
                 </>
               ) : (
                 <>
-                  <div className="pdf-card pdf-card--inner" style={{ padding: 10, borderColor: 'rgba(16,185,129,0.35)', background: 'rgba(16,185,129,0.06)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <b style={{ color: 'var(--pdf-ink)' }}>Protected outcome</b>
-                      <span className="pdf-pill good">P</span>
+                  {/* YES - Participating Outcome */}
+                  <div style={{ 
+                    border: '3px solid #10b981', 
+                    background: 'rgba(16, 185, 129, 0.08)', 
+                    borderRadius: 12, 
+                    padding: 10,
+                    position: 'relative'
+                  }}>
+                    <div style={{ 
+                      position: 'absolute', 
+                      left: 0, 
+                      top: 0, 
+                      bottom: 0, 
+                      width: 28,
+                      background: '#10b981',
+                      borderRadius: '12px 0 0 12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontWeight: 900,
+                      fontSize: 11,
+                      writingMode: 'vertical-rl',
+                      transform: 'rotate(180deg)'
+                    }}>
+                      YES
                     </div>
-                    <div className="pdf-mini pdf-muted">
-                      <div>• Minimum redemption: {formatNumber(terms.capitalProtectionPct, 0)}%</div>
-                      <div>• Participation starts at K = {formatNumber(terms.participationStartPct, 0)}%</div>
-                      {terms.knockInEnabled && (
-                        <div style={{ marginTop: 6, color: 'var(--pdf-faint)' }}>
-                          If X &lt; KI ({formatNumber(terms.knockInLevelPct ?? 0, 0)}%), switches to 100·(X/S)
-                        </div>
-                      )}
+                    <div style={{ marginLeft: 32 }}>
+                      <div style={{ fontWeight: 800, fontSize: 11, color: 'var(--pdf-ink)', marginBottom: 6 }}>
+                        Stocks Go Up – You Profit {formatNumber(terms.participationRatePct, 0)}% on the Gains
+                      </div>
+                      <div className="pdf-mini pdf-muted" style={{ lineHeight: 1.5 }}>
+                        <div>✓ For every 1% stocks rise, you gain {formatNumber(terms.participationRatePct / 100, 2)}%</div>
+                        <div>✓ Example: Stocks +20% → You get +{formatNumber(20 * terms.participationRatePct / 100, 1)}%</div>
+                        <div>✓ Maximum return capped at {capLabel}</div>
+                      </div>
+                      <div className="pdf-mini pdf-muted" style={{ marginTop: 6, fontStyle: 'italic', fontSize: 9, color: 'var(--pdf-faint)' }}>
+                        Stocks at 120% → You receive ${formatNumber(terms.notional * 1.244, 0)} on ${formatNumber(terms.notional, 0)} invested
+                      </div>
                     </div>
                   </div>
-                  <div className="pdf-card pdf-card--inner" style={{ padding: 10, borderColor: 'rgba(79,70,229,0.30)', background: 'rgba(79,70,229,0.06)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <b style={{ color: 'var(--pdf-ink)' }}>Participating outcome</b>
-                      <span className="pdf-pill">α</span>
+
+                  {/* NO - Protected Outcome */}
+                  <div style={{ 
+                    border: '3px solid #f97316', 
+                    background: 'rgba(249, 115, 22, 0.08)', 
+                    borderRadius: 12, 
+                    padding: 10,
+                    position: 'relative'
+                  }}>
+                    <div style={{ 
+                      position: 'absolute', 
+                      left: 0, 
+                      top: 0, 
+                      bottom: 0, 
+                      width: 28,
+                      background: '#f97316',
+                      borderRadius: '12px 0 0 12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontWeight: 900,
+                      fontSize: 11,
+                      writingMode: 'vertical-rl',
+                      transform: 'rotate(180deg)'
+                    }}>
+                      NO
                     </div>
-                    <div className="pdf-mini pdf-muted">
-                      <div>• Payoff% = max(P, P + a·max(0, ±(X−K)))</div>
-                      <div>• Direction: {terms.participationDirection === 'up' ? 'Upside' : 'Downside'}</div>
-                      <div>• Cap: {capLabel}</div>
+                    <div style={{ marginLeft: 32 }}>
+                      <div style={{ fontWeight: 800, fontSize: 11, color: 'var(--pdf-ink)', marginBottom: 6 }}>
+                        Your Money is Protected
+                      </div>
+                      <div className="pdf-mini pdf-muted" style={{ lineHeight: 1.5 }}>
+                        <div>✓ No matter how far stocks fall, you get back at least {formatNumber(terms.capitalProtectionPct, 0)}%</div>
+                        <div>✓ Zero downside risk below {formatNumber(terms.participationStartPct, 0)}%</div>
+                        <div>✓ Peace of mind: Your principal is safe</div>
+                      </div>
+                      <div className="pdf-mini pdf-muted" style={{ marginTop: 6, fontStyle: 'italic', fontSize: 9, color: 'var(--pdf-faint)' }}>
+                        Even if stocks crash to 50%, you still receive ${formatNumber(terms.notional, 0)} on ${formatNumber(terms.notional, 0)} invested
+                      </div>
                     </div>
                   </div>
                 </>

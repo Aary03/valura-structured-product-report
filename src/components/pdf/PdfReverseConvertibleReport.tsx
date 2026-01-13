@@ -556,116 +556,120 @@ export function PdfReverseConvertibleReport({ reportData }: { reportData: Revers
 
           <div style={{ height: 8 }} />
 
-          {/* Scenario Analysis Section */}
-          <div className="pdf-card avoid-break">
-            <div className="pdf-section-title">What happens at maturity?</div>
-            <div className="pdf-mini pdf-muted" style={{ marginBottom: 8 }}>
-              Outcome depends on whether the worst-performing stock stays above or below the {computed.triggerLabel.toLowerCase()}.
+          {/* Understand the Scenarios - Enhanced Flowchart */}
+          <div style={{ marginBottom: 10 }}>
+            <div className="pdf-section-title" style={{ marginBottom: 10 }}>Understand the Scenarios</div>
+            <div className="pdf-mini pdf-muted" style={{ marginBottom: 10 }}>
+              What happens at maturity based on whether the barrier is breached
             </div>
-            
-            {/* Decision Question */}
+
+            {/* Decision Question Box */}
             <div style={{ 
-              background: 'linear-gradient(135deg, #3B82F6 0%, #1E40AF 100%)', 
+              border: '3px dashed #8b5cf6', 
+              background: 'rgba(139, 92, 246, 0.08)', 
               borderRadius: 12, 
-              padding: '12px 14px', 
-              color: 'white',
+              padding: '10px 12px',
+              textAlign: 'center',
               marginBottom: 10
             }}>
-              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>
+              <div style={{ fontWeight: 800, fontSize: 11.5, color: 'var(--pdf-ink)', marginBottom: 4 }}>
                 Does worst-performing stock stay above {barrierOrStrikeValue} at maturity?
               </div>
-              <div style={{ fontSize: 11, opacity: 0.9 }}>
-                {terms.basketType === 'worst_of' 
-                  ? `Worst-of basket: ${computed.underlyingsLabel}` 
-                  : `Single underlying: ${computed.underlyingsLabel}`}
+              <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 6, marginTop: 4 }}>
+                <span className="pdf-pill" style={{ fontSize: 9, padding: '2px 8px' }}>
+                  {terms.basketType === 'worst_of' 
+                    ? `Worst-of: ${computed.underlyingsLabel}` 
+                    : computed.underlyingsLabel}
+                </span>
+                <span className="pdf-pill" style={{ fontSize: 9, padding: '2px 8px' }}>
+                  {computed.triggerLabel}: {barrierOrStrikeValue}
+                </span>
               </div>
             </div>
 
-            {/* Two outcomes side by side */}
+            {/* YES / NO Outcome Boxes */}
             <div className="pdf-grid-2-eq">
-              {/* YES - Cash */}
+              {/* YES - Cash Redemption */}
               <div style={{ 
-                border: '2px solid rgba(16,185,129,0.4)', 
-                background: 'rgba(16,185,129,0.08)', 
-                borderRadius: 10, 
-                padding: 10 
+                border: '3px solid #10b981', 
+                background: 'rgba(16, 185, 129, 0.08)', 
+                borderRadius: 12, 
+                padding: 10,
+                position: 'relative'
               }}>
                 <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 6, 
-                  marginBottom: 6,
-                  fontWeight: 700,
-                  fontSize: 12,
-                  color: '#059669'
+                  position: 'absolute', 
+                  left: 0, 
+                  top: 0, 
+                  bottom: 0, 
+                  width: 28,
+                  background: '#10b981',
+                  borderRadius: '12px 0 0 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                  fontWeight: 900,
+                  fontSize: 11,
+                  writingMode: 'vertical-rl',
+                  transform: 'rotate(180deg)'
                 }}>
-                  <div style={{ 
-                    width: 24, 
-                    height: 24, 
-                    borderRadius: '50%', 
-                    background: '#10b981', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    color: 'white',
-                    fontSize: 16,
-                    fontWeight: 'bold'
-                  }}>✓</div>
                   YES
                 </div>
-                <div className="pdf-mini" style={{ color: '#059669', fontWeight: 600, marginBottom: 4 }}>
-                  Stocks Stay Above {computed.triggerLabel}
-                </div>
-                <div className="pdf-mini pdf-muted">
-                  <div>✓ You get back all your money (100%)</div>
-                  <div>✓ Plus {couponRateText} annual income paid {couponFreqText.toLowerCase()}</div>
-                  <div>✓ Total return: ~{formatPercent(1 + (terms.couponRatePA * terms.tenorMonths / 12), 0)} after {terms.tenorMonths} months</div>
-                </div>
-                <div className="pdf-mini pdf-muted" style={{ marginTop: 6, fontStyle: 'italic', fontSize: 9 }}>
-                  If you invest $100k, you receive ${formatNumber(terms.notional * (1 + terms.couponRatePA * terms.tenorMonths / 12), 0)}
+                <div style={{ marginLeft: 32 }}>
+                  <div style={{ fontWeight: 800, fontSize: 11, color: 'var(--pdf-ink)', marginBottom: 6 }}>
+                    Stocks Stay Above {computed.triggerLabel}
+                  </div>
+                  <div className="pdf-mini pdf-muted" style={{ lineHeight: 1.5 }}>
+                    <div>✓ You get back all your money (100%)</div>
+                    <div>✓ Plus {couponRateText} annual income paid {couponFreqText.toLowerCase()}</div>
+                    <div>✓ Total return: ~{formatPercent(1 + (terms.couponRatePA * terms.tenorMonths / 12), 0)} after {terms.tenorMonths} months</div>
+                  </div>
+                  <div className="pdf-mini pdf-muted" style={{ marginTop: 6, fontStyle: 'italic', fontSize: 9, color: 'var(--pdf-faint)' }}>
+                    Invest ${formatNumber(terms.notional, 0)} → Receive ${formatNumber(terms.notional * (1 + terms.couponRatePA * terms.tenorMonths / 12), 0)}
+                  </div>
                 </div>
               </div>
 
-              {/* NO - Shares */}
+              {/* NO - Physical Delivery */}
               <div style={{ 
-                border: '2px solid rgba(239,68,68,0.4)', 
-                background: 'rgba(239,68,68,0.08)', 
-                borderRadius: 10, 
-                padding: 10 
+                border: '3px solid #f97316', 
+                background: 'rgba(249, 115, 22, 0.08)', 
+                borderRadius: 12, 
+                padding: 10,
+                position: 'relative'
               }}>
                 <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 6, 
-                  marginBottom: 6,
-                  fontWeight: 700,
-                  fontSize: 12,
-                  color: '#dc2626'
+                  position: 'absolute', 
+                  left: 0, 
+                  top: 0, 
+                  bottom: 0, 
+                  width: 28,
+                  background: '#f97316',
+                  borderRadius: '12px 0 0 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                  fontWeight: 900,
+                  fontSize: 11,
+                  writingMode: 'vertical-rl',
+                  transform: 'rotate(180deg)'
                 }}>
-                  <div style={{ 
-                    width: 24, 
-                    height: 24, 
-                    borderRadius: '50%', 
-                    background: '#ef4444', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    color: 'white',
-                    fontSize: 16,
-                    fontWeight: 'bold'
-                  }}>✕</div>
                   NO
                 </div>
-                <div className="pdf-mini" style={{ color: '#dc2626', fontWeight: 600, marginBottom: 4 }}>
-                  Stocks Drop Below {computed.triggerLabel}
-                </div>
-                <div className="pdf-mini pdf-muted">
-                  <div>⚠ Instead of cash, you receive shares of the worst-performing stock</div>
-                  <div>✓ You still keep all your coupon payments</div>
-                  <div>⚠ Final value depends on how far stocks fell</div>
-                </div>
-                <div className="pdf-mini pdf-muted" style={{ marginTop: 6, fontStyle: 'italic', fontSize: 9 }}>
-                  If worst stock drops to 43%, you get ~43% back in shares + {formatPercent(totalCouponsPct, 1)} coupons = ~{formatPercent(0.43 + totalCouponsPct, 0)} total
+                <div style={{ marginLeft: 32 }}>
+                  <div style={{ fontWeight: 800, fontSize: 11, color: 'var(--pdf-ink)', marginBottom: 6 }}>
+                    Stocks Drop Below {computed.triggerLabel}
+                  </div>
+                  <div className="pdf-mini pdf-muted" style={{ lineHeight: 1.5 }}>
+                    <div>⚠ Instead of cash, you receive shares of the worst-performing stock</div>
+                    <div>✓ You still keep all your coupon payments</div>
+                    <div>⚠ Final value depends on how far stocks fell</div>
+                  </div>
+                  <div className="pdf-mini pdf-muted" style={{ marginTop: 6, fontStyle: 'italic', fontSize: 9, color: 'var(--pdf-faint)' }}>
+                    If worst stock drops to 43%, you get ~43% back in shares + {formatPercent(totalCouponsPct, 1)} coupons = ~{formatPercent(0.43 + totalCouponsPct, 0)} total
+                  </div>
                 </div>
               </div>
             </div>
