@@ -19,6 +19,7 @@ import { MoneyFlowVisualization } from '../components/tracker/MoneyFlowVisualiza
 import { AutocallMonitor } from '../components/tracker/AutocallMonitor';
 import { AutocallStepDownCard } from '../components/tracker/AutocallStepDownCard';
 import { CppnDetailsCard } from '../components/tracker/CppnDetailsCard';
+import { StandalonePositionCard } from '../components/modular/StandalonePositionCard';
 import { fmpClient } from '../services/api/financialModelingPrep';
 import { calcLevels, worstOf, bestOf, averageOf } from '../products/common/basket';
 
