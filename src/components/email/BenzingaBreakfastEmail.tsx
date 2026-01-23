@@ -22,6 +22,20 @@ export interface BenzingaBreakfastDigest {
     label?: string;
   };
   quickTakes?: string[];
+  topGainers?: Array<{
+    symbol: string;
+    name?: string;
+    price?: number;
+    changePct: number;
+    volume?: number;
+  }>;
+  topLosers?: Array<{
+    symbol: string;
+    name?: string;
+    price?: number;
+    changePct: number;
+    volume?: number;
+  }>;
   topHeadlines: Array<{
     title: string;
     source: string;
@@ -178,6 +192,8 @@ export function generateBenzingaBreakfastEmailHTML(digest: BenzingaBreakfastDige
         ];
 
   const hasMarketBoard = digest.marketBoard && digest.marketBoard.length > 0;
+  const gainers = digest.topGainers?.slice(0, 6) || [];
+  const losers = digest.topLosers?.slice(0, 6) || [];
 
   return `
 <!DOCTYPE html>
@@ -311,6 +327,45 @@ export function generateBenzingaBreakfastEmailHTML(digest: BenzingaBreakfastDige
             </div>
           </div>
         `).join('')}
+      </td>
+    </tr>
+    ` : ''}
+
+    <!-- Top Gainers / Losers -->
+    ${(gainers.length || losers.length) ? `
+    <tr>
+      <td style="padding:4px 20px 10px 20px;">
+        <div style="display:flex; flex-wrap:wrap; gap:12px;">
+          ${gainers.length ? `
+          <div style="flex:1 1 240px; border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:12px; background:#0f172a;">
+            <h4 style="margin:0 0 8px 0; font-size:13px; font-weight:800; letter-spacing:0.4px; color:#22c55e; text-transform:uppercase;">Top Gainers</h4>
+            ${gainers.map(g => `
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <div>
+                  <div style="font-weight:800; font-size:13px; color:#f9fafb;">${g.symbol}${g.name ? ' · ' + g.name : ''}</div>
+                  ${g.price !== undefined ? `<div style="font-size:12px; color:#9ca3af;">$${g.price.toFixed(2)}</div>` : ''}
+                  ${g.volume !== undefined ? `<div style="font-size:11px; color:#6b7280;">Vol ${g.volume.toLocaleString()}</div>` : ''}
+                </div>
+                <div style="font-weight:800; font-size:13px; color:#22c55e;">↗ ${g.changePct.toFixed(2)}%</div>
+              </div>
+            `).join('')}
+          </div>` : ''}
+
+          ${losers.length ? `
+          <div style="flex:1 1 240px; border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:12px; background:#0f172a;">
+            <h4 style="margin:0 0 8px 0; font-size:13px; font-weight:800; letter-spacing:0.4px; color:#f87171; text-transform:uppercase;">Top Losers</h4>
+            ${losers.map(g => `
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <div>
+                  <div style="font-weight:800; font-size:13px; color:#f9fafb;">${g.symbol}${g.name ? ' · ' + g.name : ''}</div>
+                  ${g.price !== undefined ? `<div style="font-size:12px; color:#9ca3af;">$${g.price.toFixed(2)}</div>` : ''}
+                  ${g.volume !== undefined ? `<div style="font-size:11px; color:#6b7280;">Vol ${g.volume.toLocaleString()}</div>` : ''}
+                </div>
+                <div style="font-weight:800; font-size:13px; color:#f87171;">↘ ${g.changePct.toFixed(2)}%</div>
+              </div>
+            `).join('')}
+          </div>` : ''}
+        </div>
       </td>
     </tr>
     ` : ''}
