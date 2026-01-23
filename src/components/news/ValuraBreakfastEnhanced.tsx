@@ -122,6 +122,22 @@ export function ValuraBreakfastEnhanced({ symbols, onEmailClick }: ValuraBreakfa
             ? 'Risk-off tone as caution builds; defensives in focus.'
             : 'Balanced tape with mixed signals across sectors.',
       overallMood: mood as 'risk_on' | 'risk_off' | 'neutral',
+      readTimeMinutes: 3,
+      viewInBrowserUrl: typeof window !== 'undefined' ? window.location.href : undefined,
+      marketBoard: [
+        { label: 'S&P 500', value: '4,950', changePct: 0.52, sublabel: '24h change' },
+        { label: 'NASDAQ 100', value: '17,250', changePct: 0.63, sublabel: '24h change' },
+        { label: 'GOLD', value: '$1,972', changePct: 0.18, sublabel: '24h change' },
+        { label: 'WTI OIL', value: '$74.3', changePct: -0.42, sublabel: '24h change' },
+        { label: 'BITCOIN', value: '$89,472', changePct: 0.12, sublabel: '24h change' },
+        { label: 'US 10Y', value: '4.26%', changePct: 0.00, sublabel: 'Yield' },
+      ],
+      fearGauge: { value: 16, label: 'Complacent' },
+      quickTakes: [
+        'Risk tone: mixed-to-cautious; watch macro prints and earnings beats/misses.',
+        'Tech leadership intact; cyclicals lag. Keep an eye on rates and USD.',
+        'Option flow still elevated in mega-cap tech; skew favoring upside hedges.',
+      ],
       topHeadlines: sortedNews.slice(0, 8).map((n) => {
         const sentiment: 'positive' | 'neutral' | 'negative' =
           n.sentimentCategory === 'bullish'
