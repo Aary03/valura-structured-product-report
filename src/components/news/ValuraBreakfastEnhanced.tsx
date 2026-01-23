@@ -10,6 +10,7 @@ import type { ProcessedNewsArticle } from '../../services/newsAggregator';
 import { NewsCard } from './NewsCard';
 import { BreakingNewsBanner } from './BreakingNewsBanner';
 import { TrendingUp, TrendingDown, Newspaper, BarChart3, Mail } from 'lucide-react';
+import { generateBenzingaBreakfastEmailHTML } from '../email/BenzingaBreakfastEmail';
 
 interface ValuraBreakfastEnhancedProps {
   symbols?: string[];
@@ -102,6 +103,63 @@ export function ValuraBreakfastEnhanced({ symbols, onEmailClick }: ValuraBreakfa
     }
   };
 
+  const handlePreviewEmail = () => {
+    const allNews = [...bullishNews, ...bearishNews, ...techNews, ...financeNews, ...underlyingNews];
+    const sortedNews = [...allNews].sort(
+      (a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
+    );
+
+    const total = allNews.length || 1;
+    const bullishRatioLocal = (bullishNews.length / total) * 100;
+    const mood = bullishRatioLocal > 60 ? 'risk_on' : bullishRatioLocal < 40 ? 'risk_off' : 'neutral';
+
+    const digest = {
+      timestamp: new Date().toISOString(),
+      headlineSummary:
+        bullishRatioLocal > 60
+          ? 'Markets skew risk-on with upbeat breadth across tech and cyclicals.'
+          : bullishRatioLocal < 40
+            ? 'Risk-off tone as caution builds; defensives in focus.'
+            : 'Balanced tape with mixed signals across sectors.',
+      overallMood: mood as 'risk_on' | 'risk_off' | 'neutral',
+      topHeadlines: sortedNews.slice(0, 8).map((n) => {
+        const sentiment: 'positive' | 'neutral' | 'negative' =
+          n.sentimentCategory === 'bullish'
+            ? 'positive'
+            : n.sentimentCategory === 'bearish'
+              ? 'negative'
+              : 'neutral';
+        return {
+          title: n.sophisticatedHeadline || n.title,
+          source: n.source,
+          url: n.url,
+          publishedAt: new Date(n.published_at).toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
+          sentiment,
+          summary: n.snippet || n.description || '',
+          tickers: n.entities?.slice(0, 4).map((e) => e.symbol) || [],
+        };
+      }),
+      bullBearSummary: `Bullish share: ${bullishRatioLocal.toFixed(0)}% · ${allNews.length} stories analyzed.`,
+      risks:
+        bullishRatioLocal < 45
+          ? ['Risk-off tone: watch earnings surprises', 'Heightened macro sensitivity']
+          : ['Monitor earnings drift vs. estimates', 'Stay alert to macro prints today'],
+      callToActionUrl: 'https://valura.ai',
+    };
+
+    const html = generateBenzingaBreakfastEmailHTML(digest);
+    const win = typeof window !== 'undefined' ? window.open('', '_blank') : null;
+    if (win) {
+      win.document.write(html);
+      win.document.close();
+    }
+  };
+
   // Calculate overall stats
   const totalArticles = bullishNews.length + bearishNews.length + techNews.length + financeNews.length;
   const bullishRatio = totalArticles > 0 ? (bullishNews.length / totalArticles) * 100 : 50;
@@ -160,27 +218,40 @@ export function ValuraBreakfastEnhanced({ symbols, onEmailClick }: ValuraBreakfa
             </div>
 
             {onEmailClick && (
-              <button
-                onClick={() => {
-                  const totalArticles = bullishNews.length + bearishNews.length + techNews.length + financeNews.length;
-                  const bullishRatio = totalArticles > 0 ? (bullishNews.length / totalArticles) * 100 : 50;
-                  const marketVibe = bullishRatio > 60 ? 'Bullish' : bullishRatio < 40 ? 'Bearish' : 'Mixed';
-                  
-                  onEmailClick({
-                    bullishNews,
-                    bearishNews,
-                    techNews,
-                    financeNews,
-                    marketVibe,
-                    bullishRatio,
-                    timestamp: new Date().toISOString(),
-                  });
-                }}
-                className="flex items-center gap-2 px-6 py-3 bg-white text-valura-ink rounded-lg hover:bg-white/90 transition-colors font-semibold shadow-lg"
-              >
-                <Mail className="w-5 h-5" />
-                Email Digest
-              </button>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => {
+                    const totalArticlesLocal =
+                      bullishNews.length + bearishNews.length + techNews.length + financeNews.length;
+                    const bullishRatioLocal =
+                      totalArticlesLocal > 0 ? (bullishNews.length / totalArticlesLocal) * 100 : 50;
+                    const marketVibe = bullishRatioLocal > 60 ? 'Bullish' : bullishRatioLocal < 40 ? 'Bearish' : 'Mixed';
+
+                    onEmailClick({
+                      bullishNews,
+                      bearishNews,
+                      techNews,
+                      financeNews,
+                      marketVibe,
+                      bullishRatio: bullishRatioLocal,
+                      timestamp: new Date().toISOString(),
+                    });
+                  }}
+                  className="flex items-center gap-2 px-6 py-3 bg-white text-valura-ink rounded-lg hover:bg-white/90 transition-colors font-semibold shadow-lg"
+                >
+                  <Mail className="w-5 h-5" />
+                  Email Digest
+                </button>
+
+                <button
+                  onClick={handlePreviewEmail}
+                  className="flex items-center gap-2 px-6 py-3 text-white border border-white/40 rounded-lg hover:bg-white/10 transition-colors font-semibold shadow-lg"
+                  style={{ backdropFilter: 'blur(10px)', background: 'rgba(255,255,255,0.08)' }}
+                >
+                  <Newspaper className="w-5 h-5 text-white" />
+                  Preview Benzinga Email
+                </button>
+              </div>
             )}
           </div>
         </div>
