@@ -10,8 +10,6 @@ import type { ProcessedNewsArticle } from '../../services/newsAggregator';
 import { NewsCard } from './NewsCard';
 import { BreakingNewsBanner } from './BreakingNewsBanner';
 import { TrendingUp, TrendingDown, Newspaper, BarChart3, Mail } from 'lucide-react';
-import { generateBenzingaBreakfastEmailHTML } from '../email/BenzingaBreakfastEmail';
-import fmpClient, { quoteEndpoints, sectorIndustryEndpoints } from '../../services/api/financialModelingPrep';
 
 interface ValuraBreakfastEnhancedProps {
   symbols?: string[];
@@ -26,19 +24,9 @@ export function ValuraBreakfastEnhanced({ symbols, onEmailClick }: ValuraBreakfa
   const [underlyingNews, setUnderlyingNews] = useState<ProcessedNewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'all' | 'bullish' | 'bearish' | 'tech' | 'finance'>('all');
-  const [marketBoard, setMarketBoard] = useState<
-    Array<{ label: string; value?: string; changePct?: number; sublabel?: string }>
-  >([]);
-  const [gainers, setGainers] = useState<
-    Array<{ symbol: string; name?: string; price?: number; changePct: number; volume?: number }>
-  >([]);
-  const [losers, setLosers] = useState<
-    Array<{ symbol: string; name?: string; price?: number; changePct: number; volume?: number }>
-  >([]);
 
   useEffect(() => {
     loadAllNews();
-    loadFmpData();
   }, [symbols?.join(',')]);
 
   const loadAllNews = async () => {
@@ -114,144 +102,6 @@ export function ValuraBreakfastEnhanced({ symbols, onEmailClick }: ValuraBreakfa
     }
   };
 
-  const loadFmpData = async () => {
-    try {
-      // Market board: use common proxies (ETF/benchmarks)
-      const boardSymbols = [
-        { label: 'S&P 500', symbol: 'SPY', sublabel: '24h change' },
-        { label: 'NASDAQ 100', symbol: 'QQQ', sublabel: '24h change' },
-        { label: 'GOLD', symbol: 'GLD', sublabel: '24h change' },
-        { label: 'WTI OIL', symbol: 'USO', sublabel: '24h change' },
-        { label: 'BITCOIN', symbol: 'BTCUSD', sublabel: '24h change' },
-        { label: 'US 10Y', symbol: '^TNX', sublabel: 'Yield' },
-      ];
-
-      const boardData = await Promise.all(
-        boardSymbols.map(async (b) => {
-          try {
-            const url = quoteEndpoints.quote(b.symbol);
-            const res: any[] = await fmpClient.get(url);
-            const first = Array.isArray(res) ? res[0] : res;
-            return {
-              label: b.label,
-              value:
-                first && typeof first.price === 'number'
-                  ? (b.symbol === '^TNX' ? `${first.price.toFixed(2)}%` : `$${first.price.toFixed(2)}`)
-                  : undefined,
-              changePct:
-                first && typeof first.changesPercentage === 'number'
-                  ? Number(first.changesPercentage)
-                  : undefined,
-              sublabel: b.sublabel,
-            };
-          } catch (err) {
-            return { label: b.label, sublabel: b.sublabel };
-          }
-        })
-      );
-      setMarketBoard(boardData);
-
-      // Gainers / Losers
-      const gainersUrl = sectorIndustryEndpoints.biggestGainers();
-      const losersUrl = sectorIndustryEndpoints.biggestLosers();
-      const [gainerRes, loserRes] = await Promise.all([
-        fmpClient.get<any[]>(gainersUrl),
-        fmpClient.get<any[]>(losersUrl),
-      ]);
-
-      const mapMovers = (arr: any[]) =>
-        (arr || []).slice(0, 6).map((m: any) => ({
-          symbol: m.ticker || m.symbol,
-          name: m.companyName || m.name,
-          price: typeof m.price === 'number' ? m.price : undefined,
-          changePct:
-            typeof m.changesPercentage === 'number'
-              ? Number(m.changesPercentage)
-              : typeof m.change_percentage === 'number'
-                ? Number(m.change_percentage)
-                : 0,
-          volume:
-            typeof m.volume === 'number'
-              ? m.volume
-              : typeof m.avgVolume === 'number'
-                ? m.avgVolume
-                : undefined,
-        }));
-
-      setGainers(mapMovers(gainerRes || []));
-      setLosers(mapMovers(loserRes || []));
-    } catch (error) {
-      console.error('Failed to load FMP data:', error);
-    }
-  };
-
-  const handlePreviewEmail = () => {
-    const allNews = [...bullishNews, ...bearishNews, ...techNews, ...financeNews, ...underlyingNews];
-    const sortedNews = [...allNews].sort(
-      (a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
-    );
-
-    const total = allNews.length || 1;
-    const bullishRatioLocal = (bullishNews.length / total) * 100;
-    const mood = bullishRatioLocal > 60 ? 'risk_on' : bullishRatioLocal < 40 ? 'risk_off' : 'neutral';
-
-    const digest = {
-      timestamp: new Date().toISOString(),
-      headlineSummary:
-        bullishRatioLocal > 60
-          ? 'Markets skew risk-on with upbeat breadth across tech and cyclicals.'
-          : bullishRatioLocal < 40
-            ? 'Risk-off tone as caution builds; defensives in focus.'
-            : 'Balanced tape with mixed signals across sectors.',
-      overallMood: mood as 'risk_on' | 'risk_off' | 'neutral',
-      readTimeMinutes: 3,
-      viewInBrowserUrl: typeof window !== 'undefined' ? window.location.href : undefined,
-      marketBoard: marketBoard.length ? marketBoard : undefined,
-      fearGauge: { value: 16, label: 'Complacent' },
-      quickTakes: [
-        'Risk tone: mixed-to-cautious; watch macro prints and earnings beats/misses.',
-        'Tech leadership intact; cyclicals lag. Keep an eye on rates and USD.',
-        'Option flow still elevated in mega-cap tech; skew favoring upside hedges.',
-      ],
-      topGainers: gainers,
-      topLosers: losers,
-      topHeadlines: sortedNews.slice(0, 8).map((n) => {
-        const sentiment: 'positive' | 'neutral' | 'negative' =
-          n.sentimentCategory === 'bullish'
-            ? 'positive'
-            : n.sentimentCategory === 'bearish'
-              ? 'negative'
-              : 'neutral';
-        return {
-          title: n.sophisticatedHeadline || n.title,
-          source: n.source,
-          url: n.url,
-          publishedAt: new Date(n.published_at).toLocaleString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          }),
-          sentiment,
-          summary: n.snippet || n.description || '',
-          tickers: n.entities?.slice(0, 4).map((e) => e.symbol) || [],
-        };
-      }),
-      bullBearSummary: `Bullish share: ${bullishRatioLocal.toFixed(0)}% · ${allNews.length} stories analyzed.`,
-      risks:
-        bullishRatioLocal < 45
-          ? ['Risk-off tone: watch earnings surprises', 'Heightened macro sensitivity']
-          : ['Monitor earnings drift vs. estimates', 'Stay alert to macro prints today'],
-      callToActionUrl: 'https://valura.ai',
-    };
-
-    const html = generateBenzingaBreakfastEmailHTML(digest);
-    const win = typeof window !== 'undefined' ? window.open('', '_blank') : null;
-    if (win) {
-      win.document.write(html);
-      win.document.close();
-    }
-  };
 
   // Calculate overall stats
   const totalArticles = bullishNews.length + bearishNews.length + techNews.length + financeNews.length;
@@ -334,15 +184,6 @@ export function ValuraBreakfastEnhanced({ symbols, onEmailClick }: ValuraBreakfa
                 >
                   <Mail className="w-5 h-5" />
                   Email Digest
-                </button>
-
-                <button
-                  onClick={handlePreviewEmail}
-                  className="flex items-center gap-2 px-6 py-3 text-white border border-white/40 rounded-lg hover:bg-white/10 transition-colors font-semibold shadow-lg"
-                  style={{ backdropFilter: 'blur(10px)', background: 'rgba(255,255,255,0.08)' }}
-                >
-                  <Newspaper className="w-5 h-5 text-white" />
-                  Preview Benzinga Email
                 </button>
               </div>
             )}

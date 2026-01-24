@@ -10,6 +10,7 @@ import { CapitalProtectedParticipationReport } from './components/report/Capital
 import { NewsPage } from './components/pages/NewsPage';
 import { AIReportBuilder } from './pages/AIReportBuilder';
 import { PositionTrackerPage } from './pages/PositionTrackerPage';
+import { LifecyclePage } from './pages/LifecyclePage';
 import { useReportGenerator } from './hooks/useReportGenerator';
 import type { ProductTerms } from './hooks/useReportGenerator';
 import { APITestComponent } from './test-api-component';
@@ -22,7 +23,7 @@ import './styles/theme.css';
 const TEST_API_MODE = false;
 const TEST_NEWS_API_MODE = false; // Set to false for normal app, true to test Marketaux API
 
-type RouteType = 'home' | 'breakfast' | 'ai-builder' | 'tracker';
+type RouteType = 'home' | 'breakfast' | 'ai-builder' | 'tracker' | 'lifecycle';
 
 function App() {
   const isPdf = new URLSearchParams(window.location.search).get('pdf') === '1';
@@ -42,6 +43,8 @@ function App() {
         setCurrentRoute('ai-builder');
       } else if (hash === 'tracker') {
         setCurrentRoute('tracker');
+      } else if (hash === 'lifecycle') {
+        setCurrentRoute('lifecycle');
       } else {
         setCurrentRoute('home');
       }
@@ -80,6 +83,11 @@ function App() {
   // Route to Position Tracker
   if (currentRoute === 'tracker') {
     return <PositionTrackerPage />;
+  }
+
+  // Route to Lifecycle Page
+  if (currentRoute === 'lifecycle') {
+    return <LifecyclePage />;
   }
 
   const handleFormSubmit = async (terms: ProductTerms) => {
@@ -129,6 +137,13 @@ function App() {
                     <span className="font-medium">Track Investments</span>
                   </a>
                   
+                  <a
+                    href="#lifecycle"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-lg hover:from-purple-600 hover:to-pink-700 transition-colors shadow-md"
+                  >
+                    <span>🔄</span>
+                    <span className="font-medium">Lifecycle</span>
+                  </a>
                   
                   <a
                     href="#breakfast"

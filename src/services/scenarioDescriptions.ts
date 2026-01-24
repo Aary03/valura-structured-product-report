@@ -151,6 +151,7 @@ export function getCPPNKnockInTriggered(terms: CapitalProtectedParticipationTerm
   const kiPct = terms.knockInLevelPct || 70;
   const strikePct = terms.downsideStrikePct || kiPct;
   const exampleDrop = kiPct * 0.85; // stocks at 85% of KI (e.g., 53% when KI is 62%)
+  const exampleReturnAmount = (notional * exampleDrop) / 100; // Correct: if stocks at 53%, you get 53% of notional
 
   return {
     title: `Stocks Fall Below ${formatNumber(kiPct, 0)}% – Protection Removed`,
@@ -159,7 +160,7 @@ export function getCPPNKnockInTriggered(terms: CapitalProtectedParticipationTerm
       `⚠ You participate 1-to-1 in further losses`,
       `⚠ Full downside exposure below ${formatNumber(kiPct, 0)}%`,
     ],
-    example: `If stocks drop to ${formatNumber(exampleDrop, 0)}%, you get back ~${formatNumber(exampleDrop, 0)}% (${formatNumber((notional * exampleDrop) / 10000, 1)}k on ${formatNumber(notional / 1000, 0)}k invested)`,
+    example: `If stocks drop to ${formatNumber(exampleDrop, 0)}%, you get back ~${formatNumber(exampleDrop, 0)}% ($${formatNumber(exampleReturnAmount / 1000, 1)}k on $${formatNumber(notional / 1000, 0)}k invested)`,
   };
 }
 
