@@ -24,38 +24,72 @@ export async function fetchHistoricalPrices(
   toDate?: string
 ): Promise<HistoricalPrice[]> {
   try {
+    const API_KEY = (import.meta as unknown as { env: { VITE_FMP_API_KEY?: string } }).env.VITE_FMP_API_KEY || 'bEiVRux9rewQy16TXMPxDqBAQGIW8UBd';
+    
     // Fetch historical data for each symbol
     const promises = symbols.map(async (symbol) => {
-      const url = fmpClient.historicalPrice.historicalPriceEodLight(symbol, fromDate, toDate);
+      // Use correct FMP endpoint format: /api/v3/historical-price-full/{symbol}
+      const url = `https://financialmodelingprep.com/api/v3/historical-price-full/${symbol}?from=${fromDate}${toDate ? `&to=${toDate}` : ''}&apikey=${API_KEY}`;
+      
+      console.log(`Fetching historical data for ${symbol}:`, url);
+      
       const response = await fetch(url);
       
       if (!response.ok) {
-        console.error(`Failed to fetch data for ${symbol}:`, response.status);
+        console.error(`Failed to fetch data for ${symbol}:`, response.status, response.statusText);
         return { symbol, data: [] };
       }
       
       const data = await response.json();
+      console.log(`Data for ${symbol}:`, { 
+        hasHistorical: !!data.historical, 
+        count: data.historical?.length 
+      });
       return { symbol, data: data.historical || [] };
     });
     
     const results = await Promise.all(promises);
     
+    console.log('FMP Historical Data Results:', results.map(r => ({ 
+      symbol: r.symbol, 
+      dataPoints: r.data.length 
+    })));
+    
     // Merge data by date
     const pricesByDate = new Map<string, Record<string, number | string>>();
     
     results.forEach(({ symbol, data }) => {
-      data.forEach((item: any) => {
-        if (!pricesByDate.has(item.date)) {
-          pricesByDate.set(item.date, { date: item.date });
-        }
-        const entry = pricesByDate.get(item.date)!;
-        entry[symbol] = item.close;
-      });
+      if (data && Array.isArray(data)) {
+        data.forEach((item: any) => {
+          if (item.date) {
+            if (!pricesByDate.has(item.date)) {
+              pricesByDate.set(item.date, { date: item.date });
+            }
+            const entry = pricesByDate.get(item.date)!;
+            entry[symbol] = item.close || item.price || 0;
+          }
+        });
+      }
     });
     
     // Convert to array and sort by date
-    const historicalData = Array.from(pricesByDate.values())
+    let historicalData = Array.from(pricesByDate.values())
       .sort((a, b) => new Date(a.date as string).getTime() - new Date(b.date as string).getTime());
+    
+    // Limit to reasonable number of points for chart performance (sample every N days if too many)
+    const MAX_POINTS = 100;
+    if (historicalData.length > MAX_POINTS) {
+      const step = Math.ceil(historicalData.length / MAX_POINTS);
+      historicalData = historicalData.filter((_, idx) => idx % step === 0 || idx === historicalData.length - 1);
+    }
+    
+    console.log('Merged Historical Data:', {
+      totalDays: historicalData.length,
+      firstDate: historicalData[0]?.date,
+      lastDate: historicalData[historicalData.length - 1]?.date,
+      symbols: Object.keys(historicalData[0] || {}).filter(k => k !== 'date'),
+      sample: historicalData.slice(0, 3)
+    });
     
     return historicalData as HistoricalPrice[];
   } catch (error) {

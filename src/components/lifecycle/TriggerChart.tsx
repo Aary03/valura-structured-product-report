@@ -30,17 +30,38 @@ export function TriggerChart({ data, historicalData = [] }: TriggerChartProps) {
   // Determine which underlyings to show
   const displayUnderlyings = viewMode === 'worst' ? [worstUnderlying] : underlyings;
   
-  // Build chart data
-  const chartData = historicalData.length > 0 ? historicalData : [
-    {
-      date: 'Initial',
-      ...Object.fromEntries(displayUnderlyings.map(u => [u.symbol, u.initialPrice])),
-    },
-    {
-      date: 'Current',
-      ...Object.fromEntries(displayUnderlyings.map(u => [u.symbol, u.currentPrice])),
-    },
-  ];
+  // Build chart data - filter to only show relevant symbols
+  const chartData = historicalData.length > 0 
+    ? historicalData.map(item => {
+        const filtered: any = { date: item.date };
+        displayUnderlyings.forEach(u => {
+          if (item[u.symbol] !== undefined) {
+            filtered[u.symbol] = item[u.symbol];
+          }
+        });
+        return filtered;
+      })
+    : [
+        {
+          date: 'Initial',
+          ...Object.fromEntries(displayUnderlyings.map(u => [u.symbol, u.initialPrice])),
+        },
+        {
+          date: 'Current',
+          ...Object.fromEntries(displayUnderlyings.map(u => [u.symbol, u.currentPrice])),
+        },
+      ];
+  
+  // Format date for display
+  const formatDate = (dateStr: string) => {
+    if (dateStr === 'Initial' || dateStr === 'Current') return dateStr;
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } catch {
+      return dateStr;
+    }
+  };
   
   // Calculate Y-axis domain
   const allPrices = displayUnderlyings.flatMap(u => [u.initialPrice, u.currentPrice]);
@@ -57,10 +78,17 @@ export function TriggerChart({ data, historicalData = [] }: TriggerChartProps) {
   
   return (
     <div className="bg-white rounded-xl border border-border p-6 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-bold text-base text-text-primary uppercase tracking-wide">
-          Performance Chart
-        </h3>
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+        <div>
+          <h3 className="font-bold text-base text-text-primary uppercase tracking-wide">
+            Performance Chart
+          </h3>
+          <p className="text-xs text-text-tertiary mt-1">
+            {historicalData.length > 0 
+              ? `${historicalData.length} days of real market data from FMP`
+              : 'Sample data (initial vs current)'}
+          </p>
+        </div>
         
         {/* View toggle (if basket) */}
         {underlyings.length > 1 && (
@@ -96,6 +124,8 @@ export function TriggerChart({ data, historicalData = [] }: TriggerChartProps) {
             dataKey="date" 
             stroke="#6b7280" 
             style={{ fontSize: '12px' }}
+            tickFormatter={formatDate}
+            interval="preserveStartEnd"
           />
           <YAxis 
             stroke="#6b7280" 
