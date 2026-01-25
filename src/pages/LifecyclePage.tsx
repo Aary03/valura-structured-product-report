@@ -12,8 +12,10 @@ import { UnderlyingsTable } from '../components/lifecycle/UnderlyingsTable';
 import { TriggerChart } from '../components/lifecycle/TriggerChart';
 import { CashflowsTable } from '../components/lifecycle/CashflowsTable';
 import { OutcomeCards } from '../components/lifecycle/OutcomeCards';
-import { ArrowLeft, Download, Share2 } from 'lucide-react';
+import { AIInsightsCard } from '../components/lifecycle/AIInsightsCard';
+import { ArrowLeft, Download, Share2, RefreshCw } from 'lucide-react';
 import { getSampleData, type SampleType } from '../data/lifecycleSamples';
+import { fetchHistoricalPrices, fetchCurrentQuotes } from '../services/lifecycleData';
 
 interface LifecyclePageProps {
   data?: ProductLifecycleData;
@@ -29,13 +31,15 @@ export function LifecyclePage({
   data: providedData, 
   couponSchedule: providedCouponSchedule, 
   notional = 100000,
-  historicalData = [],
+  historicalData: providedHistoricalData,
 }: LifecyclePageProps) {
   // Sample selector for testing
   const [sampleType, setSampleType] = useState<SampleType>('regular_income');
   const [data, setData] = useState<ProductLifecycleData | null>(providedData || null);
   const [couponSchedule, setCouponSchedule] = useState<CouponSchedule[]>(providedCouponSchedule || []);
+  const [historicalData, setHistoricalData] = useState<Array<{ date: string; [symbol: string]: number | string }>>(providedHistoricalData || []);
   const [loading, setLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(false);
   
   useEffect(() => {
     if (!providedData) {
@@ -43,8 +47,57 @@ export function LifecyclePage({
       const sample = getSampleData(sampleType);
       setData(sample.data);
       setCouponSchedule(sample.couponSchedule || []);
+      
+      // Fetch real market data
+      loadRealMarketData(sample.data);
     }
   }, [providedData, sampleType]);
+  
+  const loadRealMarketData = async (productData: ProductLifecycleData) => {
+    setDataLoading(true);
+    try {
+      const symbols = productData.underlyings.map(u => u.symbol);
+      
+      // Fetch current quotes
+      const quotes = await fetchCurrentQuotes(symbols);
+      
+      // Fetch historical prices from initial fixing date to today
+      const fromDate = productData.initialFixingDate;
+      const toDate = new Date().toISOString().split('T')[0];
+      const historical = await fetchHistoricalPrices(symbols, fromDate, toDate);
+      
+      if (historical.length > 0) {
+        setHistoricalData(historical);
+      }
+      
+      // Update current prices in data
+      if (Object.keys(quotes).length > 0) {
+        const updatedData = {
+          ...productData,
+          underlyings: productData.underlyings.map(u => {
+            const currentPrice = quotes[u.symbol] || u.currentPrice;
+            const performancePct = ((currentPrice / u.initialPrice) - 1) * 100;
+            return {
+              ...u,
+              currentPrice,
+              performancePct,
+            };
+          }),
+        };
+        setData(updatedData);
+      }
+    } catch (error) {
+      console.error('Error loading real market data:', error);
+    } finally {
+      setDataLoading(false);
+    }
+  };
+  
+  const handleRefreshData = () => {
+    if (data) {
+      loadRealMarketData(data);
+    }
+  };
   
   if (loading) {
     return (
@@ -116,6 +169,14 @@ export function LifecyclePage({
             
             <div className="flex items-center gap-3">
               <button
+                onClick={handleRefreshData}
+                disabled={dataLoading}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-border rounded-lg text-sm font-semibold text-text-primary hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <RefreshCw className={`w-4 h-4 ${dataLoading ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+              <button
                 className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-border rounded-lg text-sm font-semibold text-text-primary hover:shadow-md transition-all"
               >
                 <Share2 className="w-4 h-4" />
@@ -134,12 +195,25 @@ export function LifecyclePage({
       
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Data Loading Indicator */}
+        {dataLoading && (
+          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-3">
+            <RefreshCw className="w-5 h-5 text-blue-600 animate-spin" />
+            <div className="text-sm text-blue-900 font-medium">
+              Fetching live market data from FMP...
+            </div>
+          </div>
+        )}
+        
         <div className="space-y-6">
           {/* 1. Hero */}
           <LifecycleHero data={data} />
           
           {/* 2. KPI Grid */}
           <KPIGrid data={data} />
+          
+          {/* 2.5. AI Insights Card */}
+          <AIInsightsCard data={data} />
           
           {/* 3. Timeline Bar */}
           <TimelineBar data={data} />
