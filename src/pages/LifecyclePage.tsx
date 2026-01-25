@@ -14,7 +14,7 @@ import { CashflowsTable } from '../components/lifecycle/CashflowsTable';
 import { OutcomeCards } from '../components/lifecycle/OutcomeCards';
 import { AIInsightsCard } from '../components/lifecycle/AIInsightsCard';
 import { CalculationsCard } from '../components/lifecycle/CalculationsCard';
-import { ArrowLeft, Download, Share2, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Download, Share2, RefreshCw, Sliders, RotateCcw } from 'lucide-react';
 import { getSampleData, type SampleType } from '../data/lifecycleSamples';
 import { fetchHistoricalPrices, fetchCurrentQuotes } from '../services/lifecycleData';
 
@@ -37,11 +37,13 @@ export function LifecyclePage({
   // Sample selector for testing
   const [sampleType, setSampleType] = useState<SampleType>('regular_income');
   const [data, setData] = useState<ProductLifecycleData | null>(providedData || null);
+  const [originalData, setOriginalData] = useState<ProductLifecycleData | null>(providedData || null);
   const [couponSchedule, setCouponSchedule] = useState<CouponSchedule[]>(providedCouponSchedule || []);
   const [historicalData, setHistoricalData] = useState<Array<{ date: string; [symbol: string]: number | string }>>(providedHistoricalData || []);
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [isScenarioMode, setIsScenarioMode] = useState(false);
   
   useEffect(() => {
     if (!providedData) {
@@ -49,6 +51,7 @@ export function LifecyclePage({
       // Load sample data for testing
       const sample = getSampleData(sampleType);
       setData(sample.data);
+      setOriginalData(JSON.parse(JSON.stringify(sample.data))); // Deep clone
       setCouponSchedule(sample.couponSchedule || []);
       
       // Fetch real market data asynchronously
@@ -129,6 +132,52 @@ export function LifecyclePage({
     }
   };
   
+  // Handler for updating initial prices in scenario mode
+  const handleInitialPriceChange = (underlyingIndex: number, newInitialPrice: number) => {
+    if (!data) return;
+    
+    console.log(`Updating initial price for ${data.underlyings[underlyingIndex].symbol} to ${newInitialPrice}`);
+    
+    const updatedUnderlyings = data.underlyings.map((u, idx) => {
+      if (idx !== underlyingIndex) return u;
+      
+      // Recalculate all derived metrics
+      const performancePct = ((u.currentPrice / newInitialPrice) - 1) * 100;
+      
+      return {
+        ...u,
+        initialPrice: newInitialPrice,
+        performancePct,
+      };
+    });
+    
+    // Recalculate worst/best performer indices
+    const performanceValues = updatedUnderlyings.map(u => u.performancePct);
+    const worstPerformerIndex = performanceValues.indexOf(Math.min(...performanceValues));
+    const bestPerformerIndex = performanceValues.indexOf(Math.max(...performanceValues));
+    
+    setData({
+      ...data,
+      underlyings: updatedUnderlyings,
+      worstPerformerIndex,
+      bestPerformerIndex,
+    });
+  };
+  
+  // Reset to original data
+  const handleResetScenario = () => {
+    if (originalData) {
+      console.log('Resetting to original data');
+      setData(JSON.parse(JSON.stringify(originalData))); // Deep clone
+      setIsScenarioMode(false);
+    }
+  };
+  
+  // Toggle scenario mode
+  const handleToggleScenarioMode = () => {
+    setIsScenarioMode(!isScenarioMode);
+  };
+  
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-grad)' }}>
@@ -197,7 +246,29 @@ export function LifecyclePage({
               </div>
             )}
             
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              <button
+                onClick={handleToggleScenarioMode}
+                className={`inline-flex items-center gap-2 px-4 py-2 border rounded-lg text-sm font-semibold transition-all ${
+                  isScenarioMode
+                    ? 'bg-amber-500 text-white border-amber-600 shadow-md'
+                    : 'bg-white text-text-primary border-border hover:shadow-md'
+                }`}
+              >
+                <Sliders className="w-4 h-4" />
+                {isScenarioMode ? 'Scenario Mode ON' : 'Scenario Mode'}
+              </button>
+              
+              {isScenarioMode && (
+                <button
+                  onClick={handleResetScenario}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-border rounded-lg text-sm font-semibold text-text-primary hover:shadow-md transition-all"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Reset
+                </button>
+              )}
+              
               <button
                 onClick={handleRefreshData}
                 disabled={dataLoading}
@@ -246,6 +317,25 @@ export function LifecyclePage({
           </div>
         )}
         
+        {/* Scenario Mode Banner */}
+        {isScenarioMode && (
+          <div className="mb-4 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-400 rounded-lg">
+            <div className="flex items-start gap-3">
+              <Sliders className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <div className="text-sm font-bold text-amber-900 mb-1">
+                  Scenario Analysis Mode Active
+                </div>
+                <div className="text-xs text-amber-800 leading-relaxed">
+                  Click on any <strong>Initial Price</strong> in the table below to edit it. All metrics (performance, 
+                  barriers, triggers, distances, payoffs) will recalculate automatically. Use the <strong>Reset</strong> button 
+                  to restore original values.
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
         <div className="space-y-6">
           {/* 1. Hero */}
           <LifecycleHero data={data} />
@@ -260,7 +350,11 @@ export function LifecyclePage({
           <TimelineBar data={data} />
           
           {/* 4. Underlyings Table */}
-          <UnderlyingsTable data={data} />
+          <UnderlyingsTable 
+            data={data} 
+            isScenarioMode={isScenarioMode}
+            onInitialPriceChange={handleInitialPriceChange}
+          />
           
           {/* 5. Chart */}
           <TriggerChart data={data} historicalData={historicalData} />

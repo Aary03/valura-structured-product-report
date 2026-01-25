@@ -3,16 +3,23 @@
  * Conditional columns based on product bucket type
  */
 
+import { useState } from 'react';
 import type { ProductLifecycleData, UnderlyingLifecycle } from '../../types/lifecycle';
 import { calculateDistanceMetrics } from '../../types/lifecycle';
-import { TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle, Edit3 } from 'lucide-react';
 import { formatNumber, formatPercent } from '../../core/utils/math';
 
 interface UnderlyingsTableProps {
   data: ProductLifecycleData;
+  isScenarioMode?: boolean;
+  onInitialPriceChange?: (underlyingIndex: number, newPrice: number) => void;
 }
 
-export function UnderlyingsTable({ data }: UnderlyingsTableProps) {
+export function UnderlyingsTable({ 
+  data, 
+  isScenarioMode = false,
+  onInitialPriceChange,
+}: UnderlyingsTableProps) {
   const { bucket, underlyings, worstPerformerIndex, bestPerformerIndex } = data;
   
   return (
@@ -134,8 +141,12 @@ export function UnderlyingsTable({ data }: UnderlyingsTableProps) {
                   </td>
                   
                   {/* Initial */}
-                  <td className="text-right py-3 px-3 font-mono text-text-secondary">
-                    ${formatNumber(underlying.initialPrice, 2)}
+                  <td className="text-right py-3 px-3">
+                    <EditablePriceCell
+                      value={underlying.initialPrice}
+                      isEditable={isScenarioMode}
+                      onChange={(newPrice) => onInitialPriceChange?.(idx, newPrice)}
+                    />
                   </td>
                   
                   {/* Current */}
@@ -393,6 +404,76 @@ export function UnderlyingsTable({ data }: UnderlyingsTableProps) {
 // ============================================================================
 // HELPER COMPONENTS
 // ============================================================================
+
+function EditablePriceCell({
+  value,
+  isEditable,
+  onChange,
+}: {
+  value: number;
+  isEditable: boolean;
+  onChange: (newValue: number) => void;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [inputValue, setInputValue] = useState(value.toString());
+  
+  const handleBlur = () => {
+    const parsed = parseFloat(inputValue);
+    if (!isNaN(parsed) && parsed > 0) {
+      onChange(parsed);
+    } else {
+      setInputValue(value.toString());
+    }
+    setIsEditing(false);
+  };
+  
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleBlur();
+    } else if (e.key === 'Escape') {
+      setInputValue(value.toString());
+      setIsEditing(false);
+    }
+  };
+  
+  if (!isEditable) {
+    return (
+      <span className="font-mono text-text-secondary">
+        ${formatNumber(value, 2)}
+      </span>
+    );
+  }
+  
+  if (isEditing) {
+    return (
+      <input
+        type="number"
+        step="0.01"
+        value={inputValue}
+        onChange={(e) => setInputValue(e.target.value)}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+        autoFocus
+        className="w-24 px-2 py-1 text-right font-mono text-sm border-2 border-amber-500 rounded focus:outline-none focus:ring-2 focus:ring-amber-400"
+      />
+    );
+  }
+  
+  return (
+    <button
+      onClick={() => {
+        setIsEditing(true);
+        setInputValue(value.toString());
+      }}
+      className="group flex items-center justify-end gap-2 w-full hover:bg-amber-50 px-2 py-1 rounded transition-colors"
+    >
+      <Edit3 className="w-3 h-3 text-amber-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+      <span className="font-mono text-text-secondary group-hover:text-amber-700 font-semibold">
+        ${formatNumber(value, 2)}
+      </span>
+    </button>
+  );
+}
 
 function DistanceCell({ 
   currentPrice, 
