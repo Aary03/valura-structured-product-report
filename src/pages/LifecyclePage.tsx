@@ -40,52 +40,81 @@ export function LifecyclePage({
   const [historicalData, setHistoricalData] = useState<Array<{ date: string; [symbol: string]: number | string }>>(providedHistoricalData || []);
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   
   useEffect(() => {
     if (!providedData) {
+      console.log(`Loading sample data for type: ${sampleType}`);
       // Load sample data for testing
       const sample = getSampleData(sampleType);
       setData(sample.data);
       setCouponSchedule(sample.couponSchedule || []);
       
-      // Fetch real market data
+      // Fetch real market data asynchronously
       loadRealMarketData(sample.data);
     }
   }, [providedData, sampleType]);
   
   const loadRealMarketData = async (productData: ProductLifecycleData) => {
     setDataLoading(true);
+    console.log('=== LOADING REAL MARKET DATA ===');
+    console.log('Product data:', productData.productDisplayName);
+    
     try {
       const symbols = productData.underlyings.map(u => u.symbol);
+      console.log('Symbols to fetch:', symbols);
       
-      // Fetch current quotes
+      // Fetch current quotes FIRST
+      console.log('Fetching current quotes...');
       const quotes = await fetchCurrentQuotes(symbols);
+      console.log('Quotes fetched:', quotes);
       
       // Fetch historical prices from initial fixing date to today
       const fromDate = productData.initialFixingDate;
       const toDate = new Date().toISOString().split('T')[0];
+      console.log(`Fetching historical prices from ${fromDate} to ${toDate}...`);
       const historical = await fetchHistoricalPrices(symbols, fromDate, toDate);
+      console.log(`Historical data fetched: ${historical.length} days`);
       
       if (historical.length > 0) {
         setHistoricalData(historical);
+        console.log('Historical data state updated');
       }
       
       // Update current prices in data
-      if (Object.keys(quotes).length > 0) {
-        const updatedData = {
-          ...productData,
-          underlyings: productData.underlyings.map(u => {
-            const currentPrice = quotes[u.symbol] || u.currentPrice;
-            const performancePct = ((currentPrice / u.initialPrice) - 1) * 100;
-            return {
-              ...u,
-              currentPrice,
-              performancePct,
-            };
-          }),
+      console.log('Updating current prices...');
+      const updatedUnderlyings = productData.underlyings.map(u => {
+        const fetchedPrice = quotes[u.symbol];
+        const currentPrice = fetchedPrice || u.currentPrice;
+        const performancePct = ((currentPrice / u.initialPrice) - 1) * 100;
+        
+        console.log(`${u.symbol}: initial=${u.initialPrice}, fetched=${fetchedPrice}, current=${currentPrice}, perf=${performancePct.toFixed(2)}%`);
+        
+        return {
+          ...u,
+          currentPrice,
+          performancePct,
         };
-        setData(updatedData);
-      }
+      });
+      
+      // Recalculate worst/best performer indices
+      const performanceValues = updatedUnderlyings.map(u => u.performancePct);
+      const worstPerformerIndex = performanceValues.indexOf(Math.min(...performanceValues));
+      const bestPerformerIndex = performanceValues.indexOf(Math.max(...performanceValues));
+      
+      const updatedData = {
+        ...productData,
+        underlyings: updatedUnderlyings,
+        worstPerformerIndex,
+        bestPerformerIndex,
+      };
+      
+      console.log('Setting updated data with new prices');
+      console.log('Worst performer:', updatedUnderlyings[worstPerformerIndex]?.symbol);
+      console.log('Best performer:', updatedUnderlyings[bestPerformerIndex]?.symbol);
+      setData(updatedData);
+      setLastRefresh(new Date());
+      console.log('=== MARKET DATA LOADED SUCCESSFULLY ===');
     } catch (error) {
       console.error('Error loading real market data:', error);
     } finally {
@@ -201,6 +230,17 @@ export function LifecyclePage({
             <RefreshCw className="w-5 h-5 text-blue-600 animate-spin" />
             <div className="text-sm text-blue-900 font-medium">
               Fetching live market data from FMP...
+            </div>
+          </div>
+        )}
+        
+        {/* Last Refresh Indicator */}
+        {lastRefresh && !dataLoading && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
+            <div className="flex items-center gap-2 text-sm text-green-900">
+              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+              <strong>Live data updated:</strong>
+              <span>{lastRefresh.toLocaleTimeString()}</span>
             </div>
           </div>
         )}

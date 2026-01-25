@@ -103,19 +103,26 @@ export async function fetchHistoricalPrices(
  */
 export async function fetchCurrentQuotes(symbols: string[]): Promise<Record<string, number>> {
   try {
+    const API_KEY = (import.meta as unknown as { env: { VITE_FMP_API_KEY?: string } }).env.VITE_FMP_API_KEY || 'bEiVRux9rewQy16TXMPxDqBAQGIW8UBd';
     const quotes: Record<string, number> = {};
     
-    // Fetch quotes in parallel
+    // Fetch quotes in parallel using correct FMP endpoint
     const promises = symbols.map(async (symbol) => {
-      const url = fmpClient.quoteEndpoints.quote([symbol]);
+      // Correct FMP quote endpoint: /api/v3/quote/{symbol}
+      const url = `https://financialmodelingprep.com/api/v3/quote/${symbol}?apikey=${API_KEY}`;
+      
+      console.log(`Fetching current quote for ${symbol}:`, url);
+      
       const response = await fetch(url);
       
       if (!response.ok) {
-        console.error(`Failed to fetch quote for ${symbol}:`, response.status);
+        console.error(`Failed to fetch quote for ${symbol}:`, response.status, response.statusText);
         return { symbol, price: null };
       }
       
       const data = await response.json();
+      console.log(`Quote data for ${symbol}:`, data);
+      
       const price = data[0]?.price;
       return { symbol, price };
     });
@@ -123,10 +130,12 @@ export async function fetchCurrentQuotes(symbols: string[]): Promise<Record<stri
     const results = await Promise.all(promises);
     
     results.forEach(({ symbol, price }) => {
-      if (price !== null) {
+      if (price !== null && !isNaN(price)) {
         quotes[symbol] = price;
       }
     });
+    
+    console.log('All fetched quotes:', quotes);
     
     return quotes;
   } catch (error) {
