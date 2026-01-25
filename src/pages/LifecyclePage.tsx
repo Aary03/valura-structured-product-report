@@ -13,6 +13,7 @@ import { TriggerChart } from '../components/lifecycle/TriggerChart';
 import { CashflowsTable } from '../components/lifecycle/CashflowsTable';
 import { OutcomeCards } from '../components/lifecycle/OutcomeCards';
 import { AIInsightsCard } from '../components/lifecycle/AIInsightsCard';
+import { CalculationsCard } from '../components/lifecycle/CalculationsCard';
 import { ArrowLeft, Download, Share2, RefreshCw } from 'lucide-react';
 import { getSampleData, type SampleType } from '../data/lifecycleSamples';
 import { fetchHistoricalPrices, fetchCurrentQuotes } from '../services/lifecycleData';
@@ -269,6 +270,9 @@ export function LifecyclePage({
           
           {/* 7. Outcome Cards */}
           <OutcomeCards data={data} />
+          
+          {/* 8. Calculations Card */}
+          <CalculationsCard data={data} />
         </div>
       </div>
       
