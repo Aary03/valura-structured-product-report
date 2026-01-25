@@ -16,9 +16,13 @@ export function LifecycleHero({ data }: LifecycleHeroProps) {
   const { earnLine, riskLine } = getEarnRiskLines(data);
   
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white shadow-2xl">
+    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900 text-white shadow-2xl border border-slate-700/50">
       {/* Background pattern */}
       <div className="absolute inset-0 bg-grid-pattern opacity-5" />
+      
+      {/* Subtle glow effect */}
+      <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl" />
+      <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
       
       {/* Content */}
       <div className="relative px-8 py-8">
@@ -38,44 +42,44 @@ export function LifecycleHero({ data }: LifecycleHeroProps) {
           </div>
           
           {data.isin && (
-            <div className="text-sm text-white/60 font-mono">
+            <div className="text-sm text-white/80 font-mono font-semibold">
               ISIN: {data.isin}
             </div>
           )}
         </div>
         
         {/* Product Name */}
-        <h1 className="text-3xl md:text-4xl font-bold mb-4 leading-tight">
+        <h1 className="text-3xl md:text-4xl font-bold mb-4 leading-tight text-white">
           {data.productDisplayName}
         </h1>
         
         {/* Earn + Risk Lines */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
           {/* Earn */}
-          <div className="flex items-start gap-3 p-4 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20">
-            <div className="p-2 rounded-lg bg-green-500/20">
-              <CheckCircle2 className="w-5 h-5 text-green-400" />
+          <div className="flex items-start gap-3 p-4 rounded-xl bg-white/10 backdrop-blur-sm border border-white/30 hover:bg-white/15 transition-colors">
+            <div className="p-2 rounded-lg bg-green-500/30 border border-green-500/30">
+              <CheckCircle2 className="w-5 h-5 text-green-300" />
             </div>
             <div className="flex-1">
-              <div className="text-xs font-semibold uppercase tracking-wide text-green-400 mb-1">
+              <div className="text-xs font-bold uppercase tracking-wide text-green-300 mb-1">
                 Earn
               </div>
-              <div className="text-sm text-white/90 leading-relaxed">
+              <div className="text-sm text-white font-medium leading-relaxed">
                 {earnLine}
               </div>
             </div>
           </div>
           
           {/* Risk */}
-          <div className="flex items-start gap-3 p-4 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20">
-            <div className="p-2 rounded-lg bg-amber-500/20">
-              <AlertCircle className="w-5 h-5 text-amber-400" />
+          <div className="flex items-start gap-3 p-4 rounded-xl bg-white/10 backdrop-blur-sm border border-white/30 hover:bg-white/15 transition-colors">
+            <div className="p-2 rounded-lg bg-amber-500/30 border border-amber-500/30">
+              <AlertCircle className="w-5 h-5 text-amber-300" />
             </div>
             <div className="flex-1">
-              <div className="text-xs font-semibold uppercase tracking-wide text-amber-400 mb-1">
+              <div className="text-xs font-bold uppercase tracking-wide text-amber-300 mb-1">
                 Risk
               </div>
-              <div className="text-sm text-white/90 leading-relaxed">
+              <div className="text-sm text-white font-medium leading-relaxed">
                 {riskLine}
               </div>
             </div>
@@ -83,9 +87,9 @@ export function LifecycleHero({ data }: LifecycleHeroProps) {
         </div>
         
         {/* Basket type indicator */}
-        <div className="mt-6 flex items-center gap-2 text-xs text-white/60">
+        <div className="mt-6 flex items-center gap-2 text-xs text-white/80">
           <span className="font-semibold uppercase tracking-wide">Basket:</span>
-          <span>
+          <span className="text-white/70">
             {data.basketType === 'worst_of' && 'Worst performer drives outcome'}
             {data.basketType === 'best_of' && 'Best performer drives outcome'}
             {data.basketType === 'average' && 'Average performance drives outcome'}
