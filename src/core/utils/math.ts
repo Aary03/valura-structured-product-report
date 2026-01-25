@@ -44,10 +44,17 @@ export function formatNumber(value: number, decimals: number = 2): string {
 }
 
 /**
- * Format percentage
+ * Format percentage (expects decimal, e.g., 0.1275 → "12.75%")
  */
 export function formatPercent(value: number, decimals: number = 2): string {
   return `${toPercent(value, decimals)}%`;
+}
+
+/**
+ * Format percentage value (expects percentage, e.g., 12.75 → "12.75%")
+ */
+export function formatPercentValue(value: number, decimals: number = 2): string {
+  return `${round(value, decimals)}%`;
 }
 
 /**

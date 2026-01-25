@@ -7,7 +7,7 @@ import { useState } from 'react';
 import type { ProductLifecycleData, UnderlyingLifecycle } from '../../types/lifecycle';
 import { calculateDistanceMetrics } from '../../types/lifecycle';
 import { TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle, Edit3 } from 'lucide-react';
-import { formatNumber, formatPercent } from '../../core/utils/math';
+import { formatNumber, formatPercentValue } from '../../core/utils/math';
 
 interface UnderlyingsTableProps {
   data: ProductLifecycleData;
@@ -156,9 +156,17 @@ export function UnderlyingsTable({
                   
                   {/* Performance */}
                   <td className="text-right py-3 px-3">
-                    <div className={`flex items-center justify-end gap-1.5 font-bold ${perfColor}`}>
+                    <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg font-bold ${
+                      underlying.performancePct >= 10 
+                        ? 'bg-green-100 text-green-700' 
+                        : underlying.performancePct >= 0 
+                        ? 'bg-green-50 text-green-600' 
+                        : underlying.performancePct >= -10
+                        ? 'bg-red-50 text-red-600'
+                        : 'bg-red-100 text-red-700'
+                    }`}>
                       <PerfIcon className="w-4 h-4" />
-                      <span>{formatPercent(underlying.performancePct)}</span>
+                      <span className="text-base">{formatPercentValue(underlying.performancePct)}</span>
                     </div>
                   </td>
                   
@@ -173,8 +181,7 @@ export function UnderlyingsTable({
                               ${formatNumber(underlying.autocallLevel, 2)}
                             </div>
                             <div className="text-xs text-text-tertiary">
-                              ({formatPercent(underlying.autocallLevelPct)})
-                            </div>
+                              ({formatPercentValue(underlying.autocallLevelPct)})</div>
                           </div>
                         ) : (
                           <span className="text-text-tertiary">—</span>
@@ -202,7 +209,7 @@ export function UnderlyingsTable({
                               ${formatNumber(underlying.protectionLevel, 2)}
                             </div>
                             <div className="text-xs text-text-tertiary">
-                              ({formatPercent(underlying.protectionLevelPct)})
+                              ({formatPercentValue(underlying.protectionLevelPct)})
                             </div>
                           </div>
                         ) : (
@@ -236,7 +243,7 @@ export function UnderlyingsTable({
                               ${formatNumber(underlying.participationStart, 2)}
                             </div>
                             <div className="text-xs text-text-tertiary">
-                              ({formatPercent(underlying.participationStartPct)})
+                              ({formatPercentValue(underlying.participationStartPct)})
                             </div>
                           </div>
                         ) : (
@@ -272,7 +279,7 @@ export function UnderlyingsTable({
                                   ${formatNumber(underlying.capLevel, 2)}
                                 </div>
                                 <div className="text-xs text-text-tertiary">
-                                  ({formatPercent(underlying.capLevelPct)})
+                                  ({formatPercentValue(underlying.capLevelPct)})
                                 </div>
                               </div>
                             ) : (
@@ -307,7 +314,7 @@ export function UnderlyingsTable({
                               ${formatNumber(underlying.barrierLevel, 2)}
                             </div>
                             <div className="text-xs text-text-tertiary">
-                              ({formatPercent(underlying.barrierLevelPct)})
+                              ({formatPercentValue(underlying.barrierLevelPct)})
                             </div>
                           </div>
                         ) : (
