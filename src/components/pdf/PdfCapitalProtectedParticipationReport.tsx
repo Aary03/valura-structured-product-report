@@ -12,6 +12,7 @@ import { CppnPayoffGraph } from '../report/CppnPayoffGraph';
 import { PerformanceGraph } from '../report/PerformanceGraph';
 import { buildUnderlyingSummary, type UnderlyingSummary } from '../../services/underlyingSummary';
 import { buildCPPNFlow } from '../scenarios/builders/buildCPPNFlow';
+import { calculateCppnBreakevenLevelPct } from '../../products/capitalProtectedParticipation/breakEven';
 
 declare global {
   interface Window {
@@ -96,6 +97,9 @@ export function PdfCapitalProtectedParticipationReport({
   const capLabel = terms.capType === 'capped' ? `${terms.capLevelPct}%` : 'None';
   const kiLabel = terms.knockInEnabled ? `${terms.knockInLevelPct}%` : 'Off';
   const sLabel = terms.knockInEnabled ? `${terms.downsideStrikePct ?? terms.knockInLevelPct}%` : '—';
+  
+  // Calculate break-even
+  const breakEvenResult = useMemo(() => calculateCppnBreakevenLevelPct(terms), [terms]);
 
   const scenarioLevels = terms.capType === 'capped' ? [70, 90, 100, 120, 140, 160] : [70, 90, 100, 120, 140, 160];
   const a = terms.participationRatePct / 100;
@@ -359,28 +363,93 @@ export function PdfCapitalProtectedParticipationReport({
             <div className="pdf-card avoid-break" style={{ borderColor: 'rgba(245,158,11,0.35)', background: 'rgba(245,158,11,0.08)' }}>
               <div className="pdf-section-title" style={{ marginBottom: 4 }}>Break-even / Minimum</div>
               <div className="pdf-mini pdf-muted">
-                {terms.bonusEnabled ? (
+                {/* Bonus Certificate */}
+                {breakEvenResult.kind === 'bonus_conditional' && (
                   <>
-                    Bonus: <b style={{ color: 'var(--pdf-ink)' }}>{formatNumber(terms.bonusLevelPct, 0)}%</b> if barrier ({formatNumber(terms.bonusBarrierPct, 0)}%) never breached
-                    <div style={{ marginTop: 6 }}>
-                      If barrier breached: payoff follows underlying performance (1:1).
+                    <div style={{ marginBottom: 6 }}>
+                      <b style={{ color: 'var(--pdf-ink)' }}>If barrier not breached:</b> Minimum {formatNumber(breakEvenResult.bonusFloorPct, 1)}% (bonus floor)
                     </div>
-                  </>
-                ) : terms.capitalProtectionPct >= 100 ? (
-                  <>
-                    Minimum redemption: <b style={{ color: 'var(--pdf-ink)' }}>{formatNumber(terms.capitalProtectionPct, 0)}%</b>
-                    <div style={{ marginTop: 6 }}>
-                      Capital protected at maturity (issuer dependent).
+                    <div>
+                      <b style={{ color: 'var(--pdf-ink)' }}>If barrier breached:</b> Payoff follows underlying 1:1 (potential loss)
                     </div>
-                  </>
-                ) : (
-                  <>
-                    See web report for detailed breakeven (P &lt; 100).
+                    <div style={{ marginTop: 6, fontSize: 9, color: 'var(--pdf-faint)' }}>
+                      Barrier level: {formatNumber(breakEvenResult.barrierPct, 1)}% • Must never touch during product life
+                    </div>
                   </>
                 )}
-                {!terms.bonusEnabled && terms.knockInEnabled && (
-                  <div style={{ marginTop: 6 }}>
-                    Knock-in: if X &lt; <b style={{ color: 'var(--pdf-ink)' }}>{formatNumber(terms.knockInLevelPct ?? 0, 0)}%</b>, payoff switches to <span className="pdf-mono">100·(X/S)</span>.
+                
+                {/* Always Profitable */}
+                {breakEvenResult.kind === 'always' && (
+                  <>
+                    <div style={{ marginBottom: 6 }}>
+                      <b style={{ color: 'var(--pdf-ink)' }}>Minimum redemption: {formatNumber(breakEvenResult.minReturnPct, 1)}%</b>
+                    </div>
+                    <div>
+                      {breakEvenResult.reason} • Always profitable at maturity.
+                    </div>
+                  </>
+                )}
+                
+                {/* Standard Break-even Level */}
+                {breakEvenResult.kind === 'level' && (
+                  <>
+                    <div style={{ marginBottom: 6 }}>
+                      <b style={{ color: 'var(--pdf-ink)' }}>Break-even level: {formatNumber(breakEvenResult.levelPct, 1)}%</b>
+                    </div>
+                    <div style={{ marginBottom: 4 }}>
+                      Above {formatNumber(breakEvenResult.levelPct, 1)}%: positive return • Below: loss down to {formatNumber(breakEvenResult.floorPct, 1)}% floor
+                    </div>
+                    <div style={{ fontSize: 9.5, color: 'var(--pdf-ink)', background: 'rgba(255,255,255,0.4)', padding: '6px 8px', borderRadius: 6, marginTop: 6 }}>
+                      <b>Formula:</b> <span className="pdf-mono">BE = {formatNumber(terms.participationStartPct, 0)}% + ({formatNumber(100 - terms.capitalProtectionPct, 0)} / {formatNumber(terms.participationRatePct / 100, 2)}) = {formatNumber(breakEvenResult.levelPct, 1)}%</span>
+                    </div>
+                  </>
+                )}
+                
+                {/* Impossible to Break Even */}
+                {breakEvenResult.kind === 'impossible' && (
+                  <>
+                    <div style={{ marginBottom: 6 }}>
+                      <b style={{ color: 'var(--pdf-ink)' }}>Cannot reach 100% return</b>
+                    </div>
+                    <div style={{ marginBottom: 4 }}>
+                      Maximum redemption: <b style={{ color: 'var(--pdf-ink)' }}>{formatNumber(breakEvenResult.maxReturnPct ?? 0, 1)}%</b>
+                    </div>
+                    <div style={{ fontSize: 9, color: 'var(--pdf-faint)' }}>
+                      {breakEvenResult.reason}
+                    </div>
+                  </>
+                )}
+                
+                {/* Knock-in Conditional */}
+                {breakEvenResult.kind === 'knock_in_conditional' && (
+                  <>
+                    <div style={{ marginBottom: 6 }}>
+                      <b style={{ color: 'var(--pdf-ink)' }}>Conditional break-even:</b>
+                    </div>
+                    <div style={{ marginBottom: 4 }}>
+                      {breakEvenResult.protectedBreakevenPct !== null ? (
+                        <>
+                          If final ≥ {formatNumber(breakEvenResult.knockInLevelPct, 0)}%: break-even at <b style={{ color: 'var(--pdf-ink)' }}>{formatNumber(breakEvenResult.protectedBreakevenPct, 1)}%</b>
+                        </>
+                      ) : (
+                        <>
+                          If final ≥ {formatNumber(breakEvenResult.knockInLevelPct, 0)}%: always get ≥ {formatNumber(breakEvenResult.capitalProtectionPct, 0)}%
+                        </>
+                      )}
+                    </div>
+                    <div>
+                      If final &lt; {formatNumber(breakEvenResult.knockInLevelPct, 0)}% (knock-in): payoff switches to geared-put formula (1:1 downside exposure)
+                    </div>
+                    <div style={{ marginTop: 6, fontSize: 9, color: 'var(--pdf-faint)' }}>
+                      Protection only valid if knock-in never triggered
+                    </div>
+                  </>
+                )}
+                
+                {/* Additional Knock-in Warning (for any type with KI) */}
+                {!terms.bonusEnabled && terms.knockInEnabled && breakEvenResult.kind !== 'knock_in_conditional' && (
+                  <div style={{ marginTop: 6, fontSize: 9.5, background: 'rgba(239,68,68,0.1)', padding: '6px 8px', borderRadius: 6, color: 'var(--pdf-ink)' }}>
+                    ⚠️ Knock-in at {formatNumber(terms.knockInLevelPct ?? 0, 0)}%: if breached, protection lost and payoff = 100·(X/S)
                   </div>
                 )}
               </div>
