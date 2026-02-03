@@ -369,22 +369,24 @@
 }
 
 .pdf-chip-logo {
-  width: 20px;
-  height: 20px;
+  width: 26px;
+  height: 26px;
   border-radius: 999px;
-  border: 1px solid var(--pdf-border);
+  border: 1.5px solid var(--pdf-border);
   background: #fff;
   overflow: hidden;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  margin-right: 6px;
+  flex-shrink: 0;
 }
 
 .pdf-chip-logo img {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  padding: 2px;
+  padding: 3px;
 }
 
 .pdf-spec-grid {
@@ -417,10 +419,10 @@
 }
 
 .pdf-inline-logo {
-  width: 18px;
-  height: 18px;
-  border-radius: 6px;
-  border: 1px solid var(--pdf-border);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1.5px solid var(--pdf-border);
   background: #fff;
   overflow: hidden;
   display: inline-flex;
@@ -433,7 +435,7 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
-  padding: 2px;
+  padding: 4px;
 }
 
 .pdf-kpi {

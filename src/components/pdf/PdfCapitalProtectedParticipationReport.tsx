@@ -205,6 +205,34 @@ export function PdfCapitalProtectedParticipationReport({
             </div>
 
             <div className="pdf-chip-row">
+              {underlyingData.map((u) => {
+                const { logoUrl, fallback } = getLogoWithFallback(u.symbol, u.name);
+                return (
+                  <span key={u.symbol} className="pdf-chip">
+                    <span className="pdf-chip-logo">
+                      <img
+                        src={logoUrl}
+                        alt={u.symbol}
+                        onError={(e) => {
+                          const img = e.currentTarget;
+                          img.style.display = 'none';
+                          const parent = img.parentElement;
+                          if (parent && !parent.querySelector('.pdf-logo-fallback')) {
+                            const fb = document.createElement('span');
+                            fb.className = 'pdf-logo-fallback';
+                            fb.textContent = fallback;
+                            parent.appendChild(fb);
+                          }
+                        }}
+                      />
+                    </span>
+                    {u.symbol}
+                  </span>
+                );
+              })}
+            </div>
+
+            <div className="pdf-chip-row" style={{ marginTop: 6 }}>
               <span className="pdf-chip">{terms.currency}</span>
               <span className="pdf-chip">{terms.tenorMonths}M Tenor</span>
               <span className="pdf-chip">{basketLabel} Basket</span>
