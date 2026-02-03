@@ -22,6 +22,48 @@ export function buildCPPNFlow(terms: CapitalProtectedParticipationTerms): Scenar
       : `${terms.basketType.replace('_', '-')} basket`;
 
   const nodes = [];
+  
+  // ISSUER CALLABLE NODE (if enabled) - First decision point
+  if (terms.issuerCallableEnabled && terms.exitRatePA != null) {
+    const callFreqLabel = terms.issuerCallFrequency
+      ? terms.issuerCallFrequency.charAt(0).toUpperCase() + terms.issuerCallFrequency.slice(1).replace('-', ' ')
+      : 'Periodic';
+    
+    // Calculate example payout for various call dates
+    const exampleMonths = terms.tenorMonths >= 12 ? 6 : Math.floor(terms.tenorMonths / 2);
+    const exampleExitReturn = terms.exitRatePA * (exampleMonths / 12);
+    const examplePayout = terms.capitalProtectionPct + exampleExitReturn;
+    
+    nodes.push({
+      id: 'issuer-call',
+      stage: 'observation' as const,
+      condition: `Has the issuer called the product at an observation date?`,
+      yes: {
+        title: 'Early Redemption (Issuer Called)',
+        lines: [
+          `• Product terminates early at the call date`,
+          `• You receive: ${formatNumber(terms.capitalProtectionPct, 0)}% capital + Exit Rate`,
+          `• Exit Rate = ${formatNumber(terms.exitRatePA, 2)}% p.a. × (months held / 12)`,
+          `• No further upside participation after call`,
+        ],
+        note: `Example: Called after ${exampleMonths} months → ${formatNumber(terms.capitalProtectionPct, 0)}% + ${formatNumber(exampleExitReturn, 2)}% = ${formatNumber(examplePayout, 2)}%`,
+      },
+      no: {
+        title: 'Product Continues',
+        lines: [
+          `• Issuer chooses not to call at this observation`,
+          `• Product continues to next observation or maturity`,
+          `• All participation and protection terms remain active`,
+          `• Issuer can still call at future observation dates`,
+        ],
+        note: `Product continues with full participation in ${levelLabel} performance`,
+      },
+      metaChips: [
+        `${callFreqLabel} Observations`,
+        `Exit Rate: ${formatNumber(terms.exitRatePA, 2)}% p.a.`,
+      ],
+    });
+  }
 
   // BONUS CERTIFICATE LOGIC
   if (terms.bonusEnabled && terms.bonusBarrierPct && terms.bonusLevelPct) {
@@ -109,9 +151,18 @@ export function buildCPPNFlow(terms: CapitalProtectedParticipationTerms): Scenar
     ],
   });
 
+  // Build subtitle based on features
+  let subtitle = 'What happens ';
+  if (terms.issuerCallableEnabled) {
+    subtitle += 'at observation dates (issuer call) and ';
+  }
+  subtitle += terms.bonusEnabled 
+    ? 'at maturity based on whether the barrier was touched'
+    : 'at maturity based on how the underlying performs';
+  
   return {
     title: 'Understand the Scenarios',
-    subtitle: 'What happens at maturity based on how the underlying performs',
+    subtitle,
     nodes,
   };
 }
