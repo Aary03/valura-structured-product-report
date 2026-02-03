@@ -105,6 +105,15 @@ export function PdfCapitalProtectedParticipationReport({
   const exitRateLabel = terms.issuerCallableEnabled && terms.exitRatePA
     ? `${formatNumber(terms.exitRatePA, 2)}%`
     : '—';
+    
+  // Format basket type for display
+  const basketLabel = terms.basketType === 'worst_of' 
+    ? 'Worst Of' 
+    : terms.basketType === 'best_of'
+    ? 'Best Of'
+    : terms.basketType === 'single'
+    ? 'Single'
+    : 'Average';
   
   // Calculate break-even
   const breakEvenResult = useMemo(() => calculateCppnBreakevenLevelPct(terms), [terms]);
@@ -196,28 +205,33 @@ export function PdfCapitalProtectedParticipationReport({
             </div>
 
             <div className="pdf-chip-row">
-              <span className="pdf-chip"><span className="muted">{terms.currency}</span></span>
-              <span className="pdf-chip"><span className="muted">{terms.tenorMonths}M</span> Tenor</span>
-              <span className="pdf-chip"><span className="muted">{terms.basketType}</span> Basket</span>
+              <span className="pdf-chip">{terms.currency}</span>
+              <span className="pdf-chip">{terms.tenorMonths}M Tenor</span>
+              <span className="pdf-chip">{basketLabel} Basket</span>
               {terms.bonusEnabled ? (
                 <>
-                  <span className="pdf-chip"><span className="muted">{terms.bonusLevelPct}%</span> Bonus</span>
-                  <span className="pdf-chip"><span className="muted">{terms.bonusBarrierPct}%</span> Barrier</span>
-                  <span className="pdf-chip"><span className="muted">{terms.participationStartPct}%</span> Strike</span>
-                  <span className="pdf-chip"><span className="muted">{terms.participationRatePct}%</span> Participation</span>
-                  <span className="pdf-chip"><span className="muted">{capLabel}</span> Cap</span>
+                  <span className="pdf-chip">{terms.bonusLevelPct}% Bonus</span>
+                  <span className="pdf-chip">{terms.bonusBarrierPct}% Barrier</span>
+                  <span className="pdf-chip">{terms.participationStartPct}% Strike</span>
+                  <span className="pdf-chip">{terms.participationRatePct}% Participation</span>
+                  {terms.capType === 'capped' && <span className="pdf-chip">Cap: {terms.capLevelPct}%</span>}
                 </>
               ) : (
                 <>
-                  <span className="pdf-chip"><span className="muted">{terms.participationRatePct}%</span> Participation</span>
-                  <span className="pdf-chip"><span className="muted">{terms.participationStartPct}%</span> Starts at</span>
-                  <span className="pdf-chip"><span className="muted">{capLabel}</span> Cap</span>
-                  <span className="pdf-chip"><span className="muted">{kiLabel}</span> KI</span>
-                  <span className="pdf-chip"><span className="muted">{sLabel}</span> S</span>
+                  <span className="pdf-chip">{terms.participationRatePct}% Participation</span>
+                  <span className="pdf-chip">{terms.participationStartPct}% Starts at</span>
+                  {terms.capType === 'capped' && terms.capLevelPct ? (
+                    <span className="pdf-chip">Cap: {terms.capLevelPct}%</span>
+                  ) : (
+                    <span className="pdf-chip">No Cap</span>
+                  )}
+                  {terms.knockInEnabled && (
+                    <span className="pdf-chip">KI: {terms.knockInLevelPct}%</span>
+                  )}
                 </>
               )}
               {terms.issuerCallableEnabled && (
-                <span className="pdf-chip"><span className="muted">{callFrequencyLabel}</span> Callable</span>
+                <span className="pdf-chip">{callFrequencyLabel} Callable</span>
               )}
             </div>
 
