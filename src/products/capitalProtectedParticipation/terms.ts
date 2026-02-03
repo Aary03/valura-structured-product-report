@@ -10,6 +10,7 @@ import { computeSMinForContinuity, computeProtectedPayoffPctAtX } from './guards
 export type ParticipationDirection = 'up' | 'down';
 export type CapType = 'none' | 'capped';
 export type KnockInMode = 'EUROPEAN';
+export type IssuerCallFrequency = 'monthly' | 'quarterly' | 'semi-annual' | 'annual';
 
 export interface CapitalProtectedParticipationTerms {
   // Discriminator
@@ -45,6 +46,12 @@ export interface CapitalProtectedParticipationTerms {
   bonusEnabled: boolean;
   bonusLevelPct?: number; // Bonus return if barrier never breached (e.g., 108 = 108%)
   bonusBarrierPct?: number; // Barrier level that shouldn't be touched for bonus (e.g., 60)
+  
+  // Issuer Callable feature
+  issuerCallableEnabled: boolean;
+  issuerCallFrequency?: IssuerCallFrequency; // How often issuer can call (required if enabled)
+  exitRatePA?: number; // Exit rate per annum if called early (e.g., 13.78 = 13.78% p.a.)
+  firstCallDateMonths?: number; // Months from start when first callable (optional, defaults to first observation)
 }
 
 export function validateCapitalProtectedParticipationTerms(
@@ -137,6 +144,19 @@ export function validateCapitalProtectedParticipationTerms(
       errors.push('Bonus barrier must be between 0% and 100%');
     }
   }
+  
+  // Issuer Callable validation
+  if (terms.issuerCallableEnabled) {
+    if (!terms.issuerCallFrequency) {
+      errors.push('Issuer call frequency must be specified when callable is enabled');
+    }
+    if (terms.exitRatePA == null || terms.exitRatePA < 0 || terms.exitRatePA > 100) {
+      errors.push('Exit rate per annum must be between 0% and 100%');
+    }
+    if (terms.firstCallDateMonths != null && (terms.firstCallDateMonths < 0 || terms.firstCallDateMonths >= terms.tenorMonths)) {
+      errors.push('First call date must be between 0 and tenor months');
+    }
+  }
 
   return { valid: errors.length === 0, errors };
 }
@@ -158,6 +178,7 @@ export function getDefaultCapitalProtectedParticipationTerms(): CapitalProtected
     knockInEnabled: false,
     knockInMode: 'EUROPEAN',
     bonusEnabled: false,
+    issuerCallableEnabled: false,
   };
 }
 

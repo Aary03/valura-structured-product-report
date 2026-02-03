@@ -98,6 +98,14 @@ export function PdfCapitalProtectedParticipationReport({
   const kiLabel = terms.knockInEnabled ? `${terms.knockInLevelPct}%` : 'Off';
   const sLabel = terms.knockInEnabled ? `${terms.downsideStrikePct ?? terms.knockInLevelPct}%` : '—';
   
+  // Issuer callable labels
+  const callFrequencyLabel = terms.issuerCallableEnabled && terms.issuerCallFrequency
+    ? terms.issuerCallFrequency.charAt(0).toUpperCase() + terms.issuerCallFrequency.slice(1)
+    : 'No';
+  const exitRateLabel = terms.issuerCallableEnabled && terms.exitRatePA
+    ? `${formatNumber(terms.exitRatePA, 2)}%`
+    : '—';
+  
   // Calculate break-even
   const breakEvenResult = useMemo(() => calculateCppnBreakevenLevelPct(terms), [terms]);
 
@@ -208,6 +216,9 @@ export function PdfCapitalProtectedParticipationReport({
                   <span className="pdf-chip"><span className="muted">{sLabel}</span> S</span>
                 </>
               )}
+              {terms.issuerCallableEnabled && (
+                <span className="pdf-chip"><span className="muted">{callFrequencyLabel}</span> Callable</span>
+              )}
             </div>
 
             <div className="pdf-spec-grid">
@@ -261,6 +272,18 @@ export function PdfCapitalProtectedParticipationReport({
                   <div className="pdf-spec-item">
                     <div className="k">Knock-in</div>
                     <div className="v">{kiLabel}</div>
+                  </div>
+                </>
+              )}
+              {terms.issuerCallableEnabled && (
+                <>
+                  <div className="pdf-spec-item">
+                    <div className="k">Issuer Callable</div>
+                    <div className="v">{callFrequencyLabel}</div>
+                  </div>
+                  <div className="pdf-spec-item">
+                    <div className="k">Exit Rate (p.a.)</div>
+                    <div className="v">{exitRateLabel}</div>
                   </div>
                 </>
               )}
@@ -336,6 +359,80 @@ export function PdfCapitalProtectedParticipationReport({
           </div>
 
           <div style={{ height: 8 }} />
+          
+          {/* Issuer Callable Section */}
+          {terms.issuerCallableEnabled && (
+            <>
+              <div className="pdf-card avoid-break" style={{ borderColor: 'rgba(59,130,246,0.35)', background: 'rgba(59,130,246,0.06)' }}>
+                <div className="pdf-section-title" style={{ marginBottom: 8 }}>Issuer Callability</div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                  <div>
+                    <div className="pdf-mini" style={{ color: 'var(--pdf-faint)', marginBottom: 4 }}>Issuer Call Frequency</div>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--pdf-ink)' }}>{callFrequencyLabel}</div>
+                  </div>
+                  <div>
+                    <div className="pdf-mini" style={{ color: 'var(--pdf-faint)', marginBottom: 4 }}>Exit Rate Per Annum</div>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--pdf-ink)' }}>{exitRateLabel}</div>
+                  </div>
+                </div>
+                
+                {/* Call Flowchart */}
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ fontWeight: 700, fontSize: 10, color: 'var(--pdf-ink)', marginBottom: 8 }}>
+                    At each Observation Date
+                  </div>
+                  
+                  {/* Decision Box */}
+                  <div style={{ 
+                    border: '2px dashed #3b82f6', 
+                    background: 'rgba(59, 130, 246, 0.08)', 
+                    borderRadius: 8, 
+                    padding: '10px',
+                    textAlign: 'center',
+                    marginBottom: 10
+                  }}>
+                    <div className="pdf-mini" style={{ fontWeight: 700, color: 'var(--pdf-ink)' }}>
+                      Has the issuer called the product?
+                    </div>
+                  </div>
+                  
+                  {/* YES / NO Outcomes */}
+                  <div className="pdf-grid-2-eq">
+                    <div style={{ 
+                      border: '2px solid #10b981', 
+                      background: 'rgba(16, 185, 129, 0.08)', 
+                      borderRadius: 8, 
+                      padding: 10
+                    }}>
+                      <div style={{ fontWeight: 800, fontSize: 10, color: '#10b981', marginBottom: 6 }}>
+                        YES
+                      </div>
+                      <div className="pdf-mini pdf-muted">
+                        <div>Product early redeems and pays {terms.capitalProtectionPct}% of invested capital plus an Exit Rate of {exitRateLabel} per annum</div>
+                      </div>
+                    </div>
+                    
+                    <div style={{ 
+                      border: '2px solid #6b7280', 
+                      background: 'rgba(107, 114, 128, 0.08)', 
+                      borderRadius: 8, 
+                      padding: 10
+                    }}>
+                      <div style={{ fontWeight: 800, fontSize: 10, color: '#6b7280', marginBottom: 6 }}>
+                        NO
+                      </div>
+                      <div className="pdf-mini pdf-muted">
+                        <div>Product continues to next observation date</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div style={{ height: 8 }} />
+            </>
+          )}
 
           {/* Good fit + Break-even (keep same section structure as RC PDF) */}
           <div className="pdf-grid-2-eq">

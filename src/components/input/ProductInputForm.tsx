@@ -70,6 +70,10 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
     bonusEnabled: boolean;
     bonusLevelPct: string;
     bonusBarrierPct: string;
+    issuerCallableEnabled: boolean;
+    issuerCallFrequency: 'monthly' | 'quarterly' | 'semi-annual' | 'annual';
+    exitRatePA: string;
+    firstCallDateMonths: string;
   };
 
   const [cppnFormData, setCppnFormData] = useState<CppnFormState>({
@@ -88,6 +92,10 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
     bonusEnabled: false,
     bonusLevelPct: '108',
     bonusBarrierPct: '60',
+    issuerCallableEnabled: false,
+    issuerCallFrequency: 'monthly',
+    exitRatePA: '13.78',
+    firstCallDateMonths: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -340,6 +348,12 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
       bonusEnabled: cppnFormData.bonusEnabled,
       bonusLevelPct: cppnFormData.bonusEnabled ? parseFloat(cppnFormData.bonusLevelPct) : undefined,
       bonusBarrierPct: cppnFormData.bonusEnabled ? parseFloat(cppnFormData.bonusBarrierPct) : undefined,
+      issuerCallableEnabled: cppnFormData.issuerCallableEnabled,
+      issuerCallFrequency: cppnFormData.issuerCallableEnabled ? cppnFormData.issuerCallFrequency : undefined,
+      exitRatePA: cppnFormData.issuerCallableEnabled ? parseFloat(cppnFormData.exitRatePA) : undefined,
+      firstCallDateMonths: cppnFormData.issuerCallableEnabled && cppnFormData.firstCallDateMonths 
+        ? parseFloat(cppnFormData.firstCallDateMonths) 
+        : undefined,
     };
 
     const validation = validateCapitalProtectedParticipationTerms(terms);
@@ -1126,6 +1140,89 @@ export function ProductInputForm({ onSubmit, loading = false }: ProductInputForm
                         {cppnFormData.knockInEnabled 
                           ? `Auto-syncs with Knock-In level (${cppnFormData.knockInLevelPct}%) by default, but can be changed`
                           : 'If stock touches this level, bonus is lost (e.g., 60 = 60% of initial)'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* CPPN: Issuer Callable Feature */}
+              <div className="border-t border-border pt-6">
+                <h3 className="text-xl font-semibold mb-4 text-valura-ink">Issuer Callable Feature (Optional)</h3>
+                <p className="text-sm text-muted mb-4">
+                  Allows issuer to call (early redeem) the product at specified observation dates, paying capital + exit rate.
+                </p>
+                <label className="flex items-center gap-3 cursor-pointer mb-4">
+                  <input
+                    type="checkbox"
+                    checked={cppnFormData.issuerCallableEnabled}
+                    onChange={(e) => setCppnFormData((prev) => ({ ...prev, issuerCallableEnabled: e.target.checked }))}
+                    className="w-5 h-5"
+                  />
+                  <span className="text-valura-ink">
+                    Enable Issuer Callability (Early Redemption)
+                  </span>
+                </label>
+
+                {cppnFormData.issuerCallableEnabled && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="label">Issuer Call Frequency</label>
+                      <select
+                        className="input-field"
+                        value={cppnFormData.issuerCallFrequency}
+                        onChange={(e) => setCppnFormData((prev) => ({ 
+                          ...prev, 
+                          issuerCallFrequency: e.target.value as 'monthly' | 'quarterly' | 'semi-annual' | 'annual'
+                        }))}
+                      >
+                        <option value="monthly">Monthly</option>
+                        <option value="quarterly">Quarterly</option>
+                        <option value="semi-annual">Semi-Annual</option>
+                        <option value="annual">Annual</option>
+                      </select>
+                      <p className="text-sm text-muted mt-1">
+                        How often issuer can exercise call option
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="label">Exit Rate Per Annum (%)</label>
+                      <input
+                        type="number"
+                        className="input-field"
+                        value={cppnFormData.exitRatePA}
+                        onChange={(e) => handleCppnChange('exitRatePA', e.target.value)}
+                        required
+                        min="0"
+                        max="50"
+                        step="0.01"
+                      />
+                      {errors.exitRatePA && (
+                        <p className="text-danger-fg text-sm mt-1">{errors.exitRatePA}</p>
+                      )}
+                      <p className="text-sm text-muted mt-1">
+                        Annualized return paid if issuer calls early (e.g., 13.78%)
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <label className="label">First Call Date (Months) - Optional</label>
+                      <input
+                        type="number"
+                        className="input-field"
+                        value={cppnFormData.firstCallDateMonths}
+                        onChange={(e) => handleCppnChange('firstCallDateMonths', e.target.value)}
+                        min="0"
+                        max={cppnFormData.tenorMonths}
+                        step="1"
+                        placeholder="Leave blank for immediate"
+                      />
+                      {errors.firstCallDateMonths && (
+                        <p className="text-danger-fg text-sm mt-1">{errors.firstCallDateMonths}</p>
+                      )}
+                      <p className="text-sm text-muted mt-1">
+                        Months from start when first callable (blank = immediately)
                       </p>
                     </div>
                   </div>
